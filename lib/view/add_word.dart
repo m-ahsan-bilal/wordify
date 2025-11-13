@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class AddWordScreen extends StatefulWidget {
   const AddWordScreen({super.key});
@@ -19,7 +20,10 @@ class _AddWordScreenState extends State<AddWordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add New Word')),
+      appBar: AppBar(
+        title: const Text('Add New Word'),
+        leading: BackButton(onPressed: () => context.go('/home')),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -44,7 +48,6 @@ class _AddWordScreenState extends State<AddWordScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('coming soon...')),
                     );
-                    Navigator.pop(context);
                   }
                 },
                 child: const Text('Save Word'),
