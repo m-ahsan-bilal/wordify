@@ -1,47 +1,121 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:word_master/core/local_db/settings_service.dart';
 
-class OnboardingScreen extends StatelessWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final pages = [
-      _buildPage(
-        icon: Icons.book_rounded,
-        title: 'Learn New Words',
-        text: 'Save and understand words you discover daily.',
-      ),
-      _buildPage(
-        icon: Icons.quiz_rounded,
-        title: 'Test Your Knowledge',
-        text: 'Recall your words through fun quizzes.',
-      ),
-      _buildPage(
-        icon: Icons.notifications_active_rounded,
-        title: 'Stay Consistent',
-        text: 'Get daily reminders and track your streak!',
-      ),
-    ];
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
 
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final PageController _controller = PageController();
+  int currentPage = 0;
+
+  final pages = [
+    {
+      'icon': Icons.book_rounded,
+      'title': 'Learn New Words',
+      'text': 'Save the words you discover daily.',
+    },
+    {
+      'icon': Icons.quiz_rounded,
+      'title': 'Quiz to Remember',
+      'text': 'Master vocabulary through fun quizzes.',
+    },
+    {
+      'icon': Icons.notifications_active_rounded,
+      'title': 'Stay Consistent',
+      'text': 'Smart reminders keep your streak alive.',
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = SettingsService();
     return Scaffold(
-      body: PageView.builder(
-        itemCount: pages.length,
-        itemBuilder: (_, index) => pages[index],
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ElevatedButton(
-          onPressed: () => context.go('/home'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.indigo,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _controller,
+              itemCount: pages.length,
+              onPageChanged: (index) {
+                setState(() => currentPage = index);
+              },
+              itemBuilder: (_, index) {
+                final page = pages[index];
+                return _buildPage(
+                  icon: page['icon'] as IconData,
+                  title: page['title'] as String,
+                  text: page['text'] as String,
+                );
+              },
             ),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-          ),
-          child: const Text('Get Started', style: TextStyle(fontSize: 18)),
+
+            // Skip button (only on first two screens)
+            if (currentPage != pages.length - 1)
+              Positioned(
+                right: 16,
+                top: 12,
+                child: TextButton(
+                  onPressed: () async {
+                    await settings.setOnboardingSeen();
+                    if (context.mounted) context.go('/home');
+                  },
+                  child: const Text(
+                    "Skip",
+                    style: TextStyle(fontSize: 16, color: Colors.indigo),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SmoothPageIndicator(
+              controller: _controller,
+              count: pages.length,
+              effect: ExpandingDotsEffect(
+                dotHeight: 10,
+                dotWidth: 10,
+                activeDotColor: Colors.indigo,
+                dotColor: Colors.black26,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Show button only on last page
+            if (currentPage == pages.length - 1)
+              ElevatedButton(
+                onPressed: () async {
+                  await settings.setOnboardingSeen();
+                  if (context.mounted) context.go('/home');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 44,
+                  ),
+                ),
+                child: const Text(
+                  'Get Started',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -53,21 +127,21 @@ class OnboardingScreen extends StatelessWidget {
     required String text,
   }) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 100, color: Colors.indigo),
-          const SizedBox(height: 24),
+          Icon(icon, size: 150, color: Colors.indigo),
+          const SizedBox(height: 40),
           Text(
             title,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 17),
           ),
         ],
       ),

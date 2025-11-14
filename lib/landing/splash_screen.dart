@@ -23,7 +23,7 @@ class _SplashScreenState extends State<SplashScreen> {
       backgroundColor: Colors.indigo,
       body: Center(
         child: Text(
-          'Wordify',
+          'WordMaster',
           style: TextStyle(
             color: Colors.white,
             fontSize: 32,
