@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:word_master/view%20model/words_list_vm.dart';
+import 'package:word_master/viewmodel/words_list_vm.dart';
 import 'package:go_router/go_router.dart';
 
 class WordsListScreen extends StatefulWidget {
@@ -15,8 +15,12 @@ class _WordsListScreenState extends State<WordsListScreen> {
   @override
   void initState() {
     super.initState();
-    // Load words when the screen opens
-    context.read<WordsListViewModel>().loadWords();
+    // Load words after the first frame to avoid build-phase issues
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<WordsListViewModel>().loadWords();
+      }
+    });
   }
 
   @override

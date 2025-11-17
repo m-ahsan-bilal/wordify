@@ -1,28 +1,51 @@
 import 'package:go_router/go_router.dart';
-import 'package:word_master/landing/onboarding.dart';
-import 'package:word_master/landing/splash_screen.dart';
-import 'package:word_master/core/local_db/settings_service.dart';
-import 'package:word_master/view/add_word.dart';
-import 'package:word_master/view/home_screen.dart';
-import 'package:word_master/view/quiz_screen.dart';
-import 'package:word_master/view/word_details_screen.dart';
-import 'package:word_master/view/word_list.dart';
+import 'package:hive/hive.dart';
+import '../landing/onboarding.dart';
+import '../landing/splash_screen.dart';
+import '../view/add_word.dart';
+import '../view/home_screen.dart';
+import '../view/quiz_screen.dart';
+import '../view/word_details_screen.dart';
+import '../view/word_list.dart';
 
+/// App Router - Handles all navigation
+/// Uses GoRouter for declarative routing
 class AppRouter {
   static GoRouter createRouter() {
-    final settings = SettingsService();
-    final hasSeen = settings.hasSeenOnboarding();
-
     return GoRouter(
-      initialLocation: hasSeen ? '/home' : '/onboarding',
+      initialLocation: '/',
+      redirect: (context, state) async {
+        // Check if user has seen onboarding (only on initial load)
+        if (state.matchedLocation == '/') {
+          // Open settings box to check onboarding status
+          final box = await Hive.openBox('settings');
+          final hasSeen = box.get('onboarding', defaultValue: false);
+          
+          if (hasSeen) {
+            return '/home';
+          } else {
+            return '/onboarding';
+          }
+        }
+        return null; // No redirect needed
+      },
       routes: [
-        GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const SplashScreen(),
+        ),
         GoRoute(
           path: '/onboarding',
           builder: (_, __) => const OnboardingScreen(),
         ),
-        GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
-        GoRoute(path: '/add-word', builder: (_, __) => const AddWordScreen()),
+        GoRoute(
+          path: '/home',
+          builder: (_, __) => const HomeScreen(),
+        ),
+        GoRoute(
+          path: '/add-word',
+          builder: (_, __) => const AddWordScreen(),
+        ),
         GoRoute(
           path: '/word-details',
           builder: (context, state) {
@@ -30,8 +53,14 @@ class AppRouter {
             return WordDetailsScreen(wordIndex: index);
           },
         ),
-        GoRoute(path: '/quiz', builder: (_, __) => QuizScreen()),
-        GoRoute(path: '/list', builder: (_, __) => const WordsListScreen()),
+        GoRoute(
+          path: '/quiz',
+          builder: (_, __) => QuizScreen(),
+        ),
+        GoRoute(
+          path: '/list',
+          builder: (_, __) => const WordsListScreen(),
+        ),
       ],
     );
   }

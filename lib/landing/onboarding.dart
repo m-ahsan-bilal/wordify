@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:word_master/core/local_db/settings_service.dart';
+import 'package:provider/provider.dart';
+import '../viewmodel/settings_vm.dart';
 
+/// Onboarding Screen - Uses SettingsViewModel
+/// Follows MVVM pattern
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -34,7 +37,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = SettingsService();
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -62,6 +64,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 top: 12,
                 child: TextButton(
                   onPressed: () async {
+                    final settings = context.read<SettingsViewModel>();
                     await settings.setOnboardingSeen();
                     if (context.mounted) context.go('/home');
                   },
@@ -83,7 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             SmoothPageIndicator(
               controller: _controller,
               count: pages.length,
-              effect: ExpandingDotsEffect(
+              effect: const ExpandingDotsEffect(
                 dotHeight: 10,
                 dotWidth: 10,
                 activeDotColor: Colors.indigo,
@@ -96,6 +99,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             if (currentPage == pages.length - 1)
               ElevatedButton(
                 onPressed: () async {
+                  final settings = context.read<SettingsViewModel>();
                   await settings.setOnboardingSeen();
                   if (context.mounted) context.go('/home');
                 },

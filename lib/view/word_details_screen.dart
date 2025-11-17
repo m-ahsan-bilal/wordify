@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:word_master/core/local_db/words_service.dart';
+import 'package:provider/provider.dart';
+import '../core/model/word_model.dart';
+import '../core/repositories/word_repository.dart';
+import '../viewmodel/add_word_vm.dart';
 
+/// Word Details Screen - Uses AddWordViewModel for updates/deletes
+/// Follows MVVM pattern: UI talks only to ViewModels
 class WordDetailsScreen extends StatefulWidget {
   final int wordIndex;
   const WordDetailsScreen({super.key, required this.wordIndex});
@@ -12,11 +17,10 @@ class WordDetailsScreen extends StatefulWidget {
 }
 
 class _WordDetailsScreenState extends State<WordDetailsScreen> {
-  final WordsService _wordsService = WordsService();
-
   late Map<String, dynamic> wordData;
   bool isEditing = false;
   final flutterTts = FlutterTts();
+  bool isLoading = true;
 
   // Controllers
   final Map<String, TextEditingController> _textControllers = {};
@@ -25,18 +29,29 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    wordData = Map<String, dynamic>.from(
-      _wordsService.getWord(widget.wordIndex) ?? {},
-    );
+    _loadWord();
+  }
 
-    // Initialize controllers for text fields
-    for (var key in ['meaning', 'sentence', 'source']) {
-      _textControllers[key] = TextEditingController(text: wordData[key] ?? '');
-    }
+  Future<void> _loadWord() async {
+    final wordRepo = context.read<WordRepository>();
+    final word = await wordRepo.getWord(widget.wordIndex);
 
-    // Initialize controllers for chips
-    for (var key in ['synonyms', 'antonyms']) {
-      _chipsControllers[key] = TextEditingController();
+    if (word != null && mounted) {
+      setState(() {
+        wordData = Map<String, dynamic>.from(word);
+        isLoading = false;
+
+        // Initialize controllers for text fields
+        for (var key in ['meaning', 'sentence', 'source']) {
+          _textControllers[key] =
+              TextEditingController(text: wordData[key] ?? '');
+        }
+
+        // Initialize controllers for chips
+        for (var key in ['synonyms', 'antonyms']) {
+          _chipsControllers[key] = TextEditingController();
+        }
+      });
     }
   }
 
@@ -62,25 +77,75 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
       wordData[key] = controller.text;
     });
 
-    await _wordsService.updateWord(widget.wordIndex, wordData);
+    final word = Word.fromMap(wordData);
+    final viewModel = context.read<AddWordViewModel>();
+    final success = await viewModel.updateWord(widget.wordIndex, word);
 
-    setState(() => isEditing = false);
+    if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Changes saved!')));
+    if (success) {
+      setState(() => isEditing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Changes saved!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(viewModel.error ?? 'Failed to save changes')),
+      );
+    }
   }
 
   void _deleteWord() async {
-    await _wordsService.deleteWord(widget.wordIndex);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Word deleted!')));
-    context.go('/home');
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Word'),
+        content: const Text('Are you sure you want to delete this word?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final viewModel = context.read<AddWordViewModel>();
+    final success = await viewModel.deleteWord(widget.wordIndex);
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Word deleted!')),
+      );
+      context.go('/home');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(viewModel.error ?? 'Failed to delete word')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: () => context.go('/home')),
+          title: const Text('Loading...'),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.go('/home')),
@@ -100,15 +165,30 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildTextSection('Meaning', 'meaning'),
-          _buildChipsSection('Synonyms', 'synonyms'),
-          _buildChipsSection('Antonyms', 'antonyms'),
-          _buildTextSection('Example Sentence', 'sentence'),
-          _buildTextSection('Source', 'source'),
-        ],
+      body: Consumer<AddWordViewModel>(
+        builder: (context, viewModel, child) {
+          return Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildTextSection('Meaning', 'meaning'),
+                  _buildChipsSection('Synonyms', 'synonyms'),
+                  _buildChipsSection('Antonyms', 'antonyms'),
+                  _buildTextSection('Example Sentence', 'sentence'),
+                  _buildTextSection('Source', 'source'),
+                ],
+              ),
+              if (viewModel.isLoading)
+                Container(
+                  color: Colors.black26,
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
