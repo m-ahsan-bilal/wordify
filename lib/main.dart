@@ -14,6 +14,7 @@ import 'package:word_master/view%20model/words_list_vm.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // firebase init for crashlytics
+  await Firebase.initializeApp();
   FlutterError.onError = (errorDetails) {
     FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
   };
