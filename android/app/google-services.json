@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723852064892",
+    "project_id": "word-master-3a4ff",
+    "storage_bucket": "word-master-3a4ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723852064892:android:662997e8cd52eadf5171f9",
+        "android_client_info": {
+          "package_name": "com.example.word_master"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOVzi7QL8j05u9DM5aDsauDUJqhA7QJ5Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

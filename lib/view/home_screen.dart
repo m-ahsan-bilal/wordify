@@ -1,3 +1,4 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:word_master/core/local_db/words_service.dart';
@@ -170,6 +171,34 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
+            const SizedBox(height: 24),
+            Text('Firebase Crashlytics Test Crash'),
+            // Crashlytics Test Button
+            SizedBox(
+              width: double.infinity,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    debugPrint('Crash button pressed..............');
+                    // Trigger a test crash
+                    FirebaseCrashlytics.instance.crash();
+                  },
+                  child: const Text(
+                    'Make Me Crash',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
 
             // Placeholder for future content
