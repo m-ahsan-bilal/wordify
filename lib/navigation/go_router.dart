@@ -1,5 +1,4 @@
 import 'package:go_router/go_router.dart';
-import 'package:hive/hive.dart';
 import '../landing/onboarding.dart';
 import '../landing/splash_screen.dart';
 import '../view/add_word.dart';
@@ -14,21 +13,6 @@ class AppRouter {
   static GoRouter createRouter() {
     return GoRouter(
       initialLocation: '/',
-      redirect: (context, state) async {
-        // Check if user has seen onboarding (only on initial load)
-        if (state.matchedLocation == '/') {
-          // Open settings box to check onboarding status
-          final box = await Hive.openBox('settings');
-          final hasSeen = box.get('onboarding', defaultValue: false);
-          
-          if (hasSeen) {
-            return '/home';
-          } else {
-            return '/onboarding';
-          }
-        }
-        return null; // No redirect needed
-      },
       routes: [
         GoRoute(
           path: '/',
