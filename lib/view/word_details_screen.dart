@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../core/model/word_model.dart';
 import '../core/repositories/word_repository.dart';
+import '../core/utils/app_colors.dart';
 import '../viewmodel/add_word_vm.dart';
 
 /// Word Details Screen - Uses AddWordViewModel for updates/deletes
@@ -22,9 +23,20 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
   final flutterTts = FlutterTts();
   bool isLoading = true;
 
-  // Controllers
-  final Map<String, TextEditingController> _textControllers = {};
-  final Map<String, TextEditingController> _chipsControllers = {};
+  // Controllers for editing
+  final _wordController = TextEditingController();
+  final _meaningController = TextEditingController();
+  final _synonymsController = TextEditingController();
+  final _antonymsController = TextEditingController();
+  final _sentenceController = TextEditingController();
+  final _sourceController = TextEditingController();
+
+  // Focus nodes for keyboard navigation
+  final _wordFocus = FocusNode();
+  final _meaningFocus = FocusNode();
+  final _synonymsFocus = FocusNode();
+  final _antonymsFocus = FocusNode();
+  final _sentenceFocus = FocusNode();
 
   @override
   void initState() {
@@ -41,24 +53,31 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         wordData = Map<String, dynamic>.from(word);
         isLoading = false;
 
-        // Initialize controllers for text fields
-        for (var key in ['meaning', 'sentence', 'source']) {
-          _textControllers[key] =
-              TextEditingController(text: wordData[key] ?? '');
-        }
-
-        // Initialize controllers for chips
-        for (var key in ['synonyms', 'antonyms']) {
-          _chipsControllers[key] = TextEditingController();
-        }
+        // Initialize controllers with current data
+        _wordController.text = wordData['word'] ?? '';
+        _meaningController.text = wordData['meaning'] ?? '';
+        _synonymsController.text = wordData['synonyms'] ?? '';
+        _antonymsController.text = wordData['antonyms'] ?? '';
+        _sentenceController.text = wordData['sentence'] ?? '';
+        _sourceController.text = wordData['source'] ?? '';
       });
     }
   }
 
   @override
   void dispose() {
-    _textControllers.forEach((_, controller) => controller.dispose());
-    _chipsControllers.forEach((_, controller) => controller.dispose());
+    _wordController.dispose();
+    _meaningController.dispose();
+    _synonymsController.dispose();
+    _antonymsController.dispose();
+    _sentenceController.dispose();
+    _sourceController.dispose();
+
+    _wordFocus.dispose();
+    _meaningFocus.dispose();
+    _synonymsFocus.dispose();
+    _antonymsFocus.dispose();
+    _sentenceFocus.dispose();
     super.dispose();
   }
 
@@ -68,29 +87,75 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
 
   void _speak(String text) async {
     if (text.isEmpty) return;
-    await flutterTts.speak(text);
+    try {
+      await flutterTts.speak(text);
+    } catch (e) {
+      debugPrint('TTS Error: $e');
+    }
   }
 
   void _saveChanges() async {
-    // Update text fields
-    _textControllers.forEach((key, controller) {
-      wordData[key] = controller.text;
-    });
+    HapticFeedback.lightImpact();
 
-    final word = Word.fromMap(wordData);
+    // Create updated word from controllers
+    final updatedWord = Word(
+      word: _wordController.text.trim(),
+      meaning: _meaningController.text.trim(),
+      synonyms: _synonymsController.text.trim(),
+      antonyms: _antonymsController.text.trim(),
+      sentence: _sentenceController.text.trim(),
+      source: _sourceController.text.trim(),
+      dateAdded: DateTime.parse(wordData['dateAdded']), // Keep original date
+    );
+
     final viewModel = context.read<AddWordViewModel>();
-    final success = await viewModel.updateWord(widget.wordIndex, word);
+    final result = await viewModel.updateWord(widget.wordIndex, updatedWord);
 
     if (!mounted) return;
 
-    if (success) {
-      setState(() => isEditing = false);
+    if (result) {
+      setState(() {
+        isEditing = false;
+        // Update local data
+        wordData = updatedWord.toMap();
+      });
+
+      HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Changes saved!')),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Word updated successfully!'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       );
     } else {
+      HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(viewModel.error ?? 'Failed to save changes')),
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(viewModel.error ?? 'Failed to save changes'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       );
     }
   }
@@ -123,10 +188,10 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Word deleted!')),
-      );
-      context.go('/home');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Word deleted!')));
+      Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(viewModel.error ?? 'Failed to delete word')),
@@ -138,31 +203,87 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return Scaffold(
+        backgroundColor: ThemeColors.getBackgroundColor(context),
         appBar: AppBar(
-          leading: BackButton(onPressed: () => context.go('/home')),
-          title: const Text('Loading...'),
+          backgroundColor: ThemeColors.getBackgroundColor(context),
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back,
+              color: ThemeColors.getTextColor(context),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Loading...',
+            style: TextStyle(
+              color: ThemeColors.getTextColor(context),
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: ThemeColors.getTextColor(context),
+          ),
+        ),
       );
     }
 
+    final word = Word.fromMap(wordData);
+
     return Scaffold(
+      backgroundColor: ThemeColors.getBackgroundColor(context),
       appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go('/home')),
-        title: Text(wordData['word'] ?? ''),
+        backgroundColor: ThemeColors.getBackgroundColor(context),
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: ThemeColors.getTextColor(context),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          isEditing ? 'Edit Word' : wordData['word'] ?? '',
+          style: TextStyle(
+            color: ThemeColors.getTextColor(context),
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         actions: [
-          IconButton(
-            icon: Icon(isEditing ? Icons.close : Icons.edit),
-            onPressed: _toggleEdit,
-          ),
-          if (isEditing) ...[
-            IconButton(icon: const Icon(Icons.save), onPressed: _saveChanges),
-            IconButton(icon: const Icon(Icons.delete), onPressed: _deleteWord),
+          if (!isEditing) ...[
+            IconButton(
+              icon: Icon(
+                Icons.volume_up,
+                color: ThemeColors.getTextColor(context),
+              ),
+              onPressed: () => _speak(wordData['word'] ?? ''),
+              tooltip: 'Listen',
+            ),
+            IconButton(
+              icon: Icon(Icons.edit, color: ThemeColors.getTextColor(context)),
+              onPressed: _toggleEdit,
+              tooltip: 'Edit',
+            ),
+          ] else ...[
+            IconButton(
+              icon: Icon(Icons.close, color: ThemeColors.getTextColor(context)),
+              onPressed: () {
+                setState(() => isEditing = false);
+                // Reset controllers to original values
+                _wordController.text = wordData['word'] ?? '';
+                _meaningController.text = wordData['meaning'] ?? '';
+                _synonymsController.text = wordData['synonyms'] ?? '';
+                _antonymsController.text = wordData['antonyms'] ?? '';
+                _sentenceController.text = wordData['sentence'] ?? '';
+                _sourceController.text = wordData['source'] ?? '';
+              },
+              tooltip: 'Cancel',
+            ),
           ],
-          IconButton(
-            icon: const Icon(Icons.volume_up),
-            onPressed: () => _speak(wordData['word'] ?? ''),
-          ),
         ],
       ),
       body: Consumer<AddWordViewModel>(
@@ -172,18 +293,36 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _buildTextSection('Meaning', 'meaning'),
-                  _buildChipsSection('Synonyms', 'synonyms'),
-                  _buildChipsSection('Antonyms', 'antonyms'),
-                  _buildTextSection('Example Sentence', 'sentence'),
-                  _buildTextSection('Source', 'source'),
+                  if (!isEditing) ...[
+                    // View Mode - Word Header Card
+                    _buildWordHeaderCard(word),
+                    const SizedBox(height: 16),
+
+                    // View Mode - Details Cards
+                    _buildMeaningCard(word),
+                    const SizedBox(height: 16),
+                    _buildSynonymsAntonymsCard(word),
+                    const SizedBox(height: 16),
+                    _buildSentenceCard(word),
+                    const SizedBox(height: 16),
+                    _buildSourceCard(word),
+                    const SizedBox(height: 16),
+                    _buildStatsCard(word),
+                    const SizedBox(height: 16),
+                    _buildActionButtons(),
+                  ] else ...[
+                    // Edit Mode - Form
+                    _buildEditForm(),
+                  ],
                 ],
               ),
               if (viewModel.isLoading)
                 Container(
                   color: Colors.black26,
-                  child: const Center(
-                    child: CircularProgressIndicator(),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: ThemeColors.getTextColor(context),
+                    ),
                   ),
                 ),
             ],
@@ -193,105 +332,712 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
     );
   }
 
-  Widget _buildTextSection(String title, String key) {
-    final controller = _textControllers[key]!;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+  // View Mode Components
+  Widget _buildWordHeaderCard(Word word) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: ThemeColors.getCardColor(context),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  word.word,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeColors.getTextColor(context),
+                  ),
+                ),
+              ),
+              _buildLevelBadge(word),
+            ],
           ),
-          const Divider(),
-          isEditing
-              ? TextField(
-                  controller: controller,
-                  maxLines: null,
-                  decoration: InputDecoration(
-                    hintText: 'Enter $title',
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+          const SizedBox(height: 8),
+          Text(
+            word.reviewStatusText,
+            style: TextStyle(
+              fontSize: 14,
+              color: ThemeColors.getSecondaryTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _speak(word.word),
+                  icon: const Icon(Icons.volume_up),
+                  label: const Text('Listen'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ThemeColors.getTextColor(context),
+                    side: BorderSide(
+                      color: ThemeColors.getBorderColor(context),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                )
-              : Text(controller.text, style: const TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildChipsSection(String title, String key) {
-    List<String> items = [];
-    if (wordData[key] != null && wordData[key].toString().isNotEmpty) {
-      items = wordData[key].toString().split(',').map((e) => e.trim()).toList();
-    }
-
-    final controller = _chipsControllers[key]!;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+  Widget _buildMeaningCard(Word word) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeColors.getCardColor(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            'Meaning',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.getTextColor(context),
+            ),
           ),
-          const Divider(),
-          Wrap(
-            spacing: 8,
-            children: items
-                .map(
-                  (e) => Chip(
-                    label: Text(e),
-                    onDeleted: isEditing
-                        ? () {
-                            setState(() {
-                              items.remove(e);
-                              wordData[key] = items.join(', ');
-                            });
-                          }
-                        : null,
+          const SizedBox(height: 12),
+          Text(
+            word.meaning.isNotEmpty ? word.meaning : 'No meaning provided',
+            style: TextStyle(
+              fontSize: 14,
+              color: word.meaning.isNotEmpty
+                  ? ThemeColors.getTextColor(context)
+                  : ThemeColors.getSecondaryTextColor(context),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSynonymsAntonymsCard(Word word) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeColors.getCardColor(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Synonyms Section
+          Text(
+            'Synonyms',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.getTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (word.synonyms.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: word.synonyms.split(',').map((synonym) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                )
-                .toList(),
-          ),
-          if (isEditing)
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    decoration: InputDecoration(
-                      hintText: 'Add $title',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
+                  decoration: BoxDecoration(
+                    color: ThemeColors.getPrimaryColor(
+                      context,
+                    ).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: ThemeColors.getPrimaryColor(
+                        context,
+                      ).withOpacity(0.3),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    if (controller.text.isEmpty) return;
-                    setState(() {
-                      items.add(controller.text.trim());
-                      wordData[key] = items.join(', ');
-                      controller.clear();
-                    });
-                  },
-                ),
-              ],
+                  child: Text(
+                    synonym.trim(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: ThemeColors.getPrimaryColor(context),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList(),
+            )
+          else
+            Text(
+              'No synonyms added',
+              style: TextStyle(
+                fontSize: 14,
+                color: ThemeColors.getSecondaryTextColor(context),
+              ),
+            ),
+
+          const SizedBox(height: 20),
+
+          // Antonyms Section
+          Text(
+            'Antonyms',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.getTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (word.antonyms.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: word.antonyms.split(',').map((antonym) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    antonym.trim(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList(),
+            )
+          else
+            Text(
+              'No antonyms added',
+              style: TextStyle(
+                fontSize: 14,
+                color: ThemeColors.getSecondaryTextColor(context),
+              ),
             ),
         ],
       ),
     );
+  }
+
+  Widget _buildSentenceCard(Word word) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeColors.getCardColor(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Example Sentence',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.getTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ThemeColors.getSecondaryColor(context).withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              word.sentence.isNotEmpty
+                  ? '"${word.sentence}"'
+                  : 'No example sentence provided',
+              style: TextStyle(
+                fontSize: 14,
+                color: word.sentence.isNotEmpty
+                    ? ThemeColors.getTextColor(context)
+                    : ThemeColors.getSecondaryTextColor(context),
+                fontStyle: word.sentence.isNotEmpty
+                    ? FontStyle.italic
+                    : FontStyle.normal,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSourceCard(Word word) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeColors.getCardColor(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Source',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.getTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                _getSourceIcon(word.source),
+                color: ThemeColors.getSecondaryTextColor(context),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                word.source.isNotEmpty ? word.source : 'No source specified',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: word.source.isNotEmpty
+                      ? ThemeColors.getTextColor(context)
+                      : ThemeColors.getSecondaryTextColor(context),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsCard(Word word) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeColors.getCardColor(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Word Statistics',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: ThemeColors.getTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatItem(
+                  'XP Earned',
+                  '${word.xp}',
+                  Icons.stars,
+                  ThemeColors.getPrimaryColor(context),
+                ),
+              ),
+              Expanded(
+                child: _buildStatItem(
+                  'Level',
+                  '${word.level}',
+                  Icons.trending_up,
+                  ThemeColors.getPrimaryColor(context),
+                ),
+              ),
+              Expanded(
+                child: _buildStatItem(
+                  'Completeness',
+                  '${_getCompletenessPercentage(word)}%',
+                  Icons.check_circle,
+                  Colors.green,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: ThemeColors.getTextColor(context),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: ThemeColors.getSecondaryTextColor(context),
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _toggleEdit,
+            icon: const Icon(Icons.edit),
+            label: const Text('Edit Word'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: ThemeColors.getTextColor(context),
+              side: BorderSide(color: ThemeColors.getBorderColor(context)),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _deleteWord,
+            icon: const Icon(Icons.delete),
+            label: const Text('Delete'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLevelBadge(Word word) {
+    if (word.isMastered) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.green,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text(
+          'Mastered',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    Color levelColor;
+    switch (word.level) {
+      case 1:
+        levelColor = Colors.orange;
+        break;
+      case 2:
+        levelColor = Colors.blue;
+        break;
+      case 3:
+        levelColor = Colors.green;
+        break;
+      default:
+        levelColor = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: levelColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: levelColor.withOpacity(0.3)),
+      ),
+      child: Text(
+        'Lv ${word.level}',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: levelColor,
+        ),
+      ),
+    );
+  }
+
+  // Edit Mode Component
+  Widget _buildEditForm() {
+    return Column(
+      children: [
+        // Word Input
+        _buildEditSection(
+          'Word',
+          _wordController,
+          _wordFocus,
+          _meaningFocus,
+          'Enter the word',
+          isRequired: true,
+        ),
+        const SizedBox(height: 16),
+
+        // Meaning Input
+        _buildEditSection(
+          'Meaning',
+          _meaningController,
+          _meaningFocus,
+          _synonymsFocus,
+          'Enter the meaning',
+          maxLines: 3,
+          isRequired: true,
+        ),
+        const SizedBox(height: 16),
+
+        // Synonyms Input
+        _buildEditSection(
+          'Synonyms',
+          _synonymsController,
+          _synonymsFocus,
+          _antonymsFocus,
+          'Enter synonyms (comma separated)',
+        ),
+        const SizedBox(height: 16),
+
+        // Antonyms Input
+        _buildEditSection(
+          'Antonyms',
+          _antonymsController,
+          _antonymsFocus,
+          _sentenceFocus,
+          'Enter antonyms (comma separated)',
+        ),
+        const SizedBox(height: 16),
+
+        // Sentence Input
+        _buildEditSection(
+          'Example Sentence',
+          _sentenceController,
+          _sentenceFocus,
+          null,
+          'Use this word in your own sentence',
+          maxLines: 3,
+        ),
+        const SizedBox(height: 16),
+
+        // Source Input
+        _buildEditSection(
+          'Source',
+          _sourceController,
+          null,
+          null,
+          'Where did you learn this word?',
+        ),
+        const SizedBox(height: 32),
+
+        // Save and Cancel Buttons
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  setState(() => isEditing = false);
+                  // Reset controllers
+                  _wordController.text = wordData['word'] ?? '';
+                  _meaningController.text = wordData['meaning'] ?? '';
+                  _synonymsController.text = wordData['synonyms'] ?? '';
+                  _antonymsController.text = wordData['antonyms'] ?? '';
+                  _sentenceController.text = wordData['sentence'] ?? '';
+                  _sourceController.text = wordData['source'] ?? '';
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ThemeColors.getSecondaryTextColor(context),
+                  side: BorderSide(color: ThemeColors.getBorderColor(context)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Cancel'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _saveChanges,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6C63FF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Save Changes'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditSection(
+    String title,
+    TextEditingController controller,
+    FocusNode? focusNode,
+    FocusNode? nextFocus,
+    String hint, {
+    int maxLines = 1,
+    bool isRequired = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeColors.getCardColor(context),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeColors.getTextColor(context),
+                ),
+              ),
+              if (isRequired)
+                const Text(
+                  ' *',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: controller,
+            focusNode: focusNode,
+            textInputAction: nextFocus != null
+                ? TextInputAction.next
+                : TextInputAction.done,
+            onFieldSubmitted: (_) => nextFocus?.requestFocus(),
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: ThemeColors.getSecondaryTextColor(
+                  context,
+                ).withOpacity(0.7),
+              ),
+              filled: true,
+              fillColor: ThemeColors.getSecondaryColor(
+                context,
+              ).withOpacity(0.3),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+            style: TextStyle(
+              fontSize: 14,
+              color: ThemeColors.getTextColor(context),
+            ),
+            validator: isRequired
+                ? (v) => v == null || v.trim().isEmpty
+                      ? 'This field is required'
+                      : null
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper Methods
+  IconData _getSourceIcon(String source) {
+    switch (source.toLowerCase()) {
+      case 'book':
+        return Icons.menu_book;
+      case 'article':
+        return Icons.article;
+      case 'youtube':
+        return Icons.play_circle_filled;
+      case 'conversation':
+        return Icons.chat_bubble;
+      default:
+        return Icons.source;
+    }
+  }
+
+  int _getCompletenessPercentage(Word word) {
+    int filledFields = 0;
+    int totalFields = 5; // word, meaning, synonyms, antonyms, sentence
+
+    if (word.word.isNotEmpty) filledFields++;
+    if (word.meaning.isNotEmpty) filledFields++;
+    if (word.synonyms.isNotEmpty) filledFields++;
+    if (word.antonyms.isNotEmpty) filledFields++;
+    if (word.sentence.isNotEmpty) filledFields++;
+
+    return ((filledFields / totalFields) * 100).round();
   }
 }

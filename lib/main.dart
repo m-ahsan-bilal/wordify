@@ -9,21 +9,27 @@ import 'dart:ui';
 
 // Core Services
 import 'core/services/notification_service.dart';
+import 'core/utils/theme_provider.dart';
 
 // Data Sources
 import 'data/datasources/local/words_local_datasource.dart';
 import 'data/datasources/local/streak_local_datasource.dart';
+import 'data/datasources/local/xp_local_datasource.dart';
+import 'data/datasources/remote/xp_remote_datasource.dart';
 
 // Repositories
 import 'core/repositories/word_repository.dart';
 import 'core/repositories/streak_repository.dart';
+import 'core/repositories/xp_repository.dart';
 import 'data/repositories/word_repository_impl.dart';
 import 'data/repositories/streak_repository_impl.dart';
+import 'data/repositories/xp_repository_impl.dart';
 
 // ViewModels
 import 'viewmodel/words_list_vm.dart';
 import 'viewmodel/add_word_vm.dart';
 import 'viewmodel/streak_vm.dart';
+import 'viewmodel/xp_vm.dart';
 import 'viewmodel/settings_vm.dart';
 
 // Navigation
@@ -59,6 +65,10 @@ void main() async {
   // Initialize local data sources
   await WordsLocalDatasource().init();
   await StreakLocalDatasource().init();
+  await XPLocalDatasource().init();
+
+  // Initialize remote data sources (placeholders for Firebase)
+  await XPRemoteDatasource().init();
 
   // Initialize settings box (needed for SettingsViewModel)
   await Hive.openBox('settings');
@@ -68,6 +78,10 @@ void main() async {
   // ============================================================
   final wordRepository = WordRepositoryImpl();
   final streakRepository = StreakRepositoryImpl();
+  final xpRepository = XPRepositoryImpl(
+    localDatasource: XPLocalDatasource(),
+    remoteDatasource: XPRemoteDatasource(),
+  );
 
   // ============================================================
   // NOTIFICATION SERVICE INITIALIZATION
@@ -98,9 +112,12 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        // Theme Provider
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         // Repositories (for direct access if needed)
         Provider<WordRepository>.value(value: wordRepository),
         Provider<StreakRepository>.value(value: streakRepository),
+        Provider<XPRepository>.value(value: xpRepository),
 
         // ViewModels
         ChangeNotifierProvider(
@@ -110,6 +127,7 @@ void main() async {
           create: (_) => AddWordViewModel(
             wordRepository: wordRepository,
             streakRepository: streakRepository,
+            xpRepository: xpRepository,
           ),
         ),
         ChangeNotifierProvider(
@@ -117,6 +135,9 @@ void main() async {
             streakRepository: streakRepository,
             wordRepository: wordRepository,
           ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => XPViewModel(xpRepository: xpRepository),
         ),
         ChangeNotifierProvider(create: (_) => SettingsViewModel()),
       ],
@@ -132,17 +153,19 @@ class VocabApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Word Master',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-        fontFamily: 'Poppins',
-        // Optional: Add custom theme settings
-        appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0.7),
-      ),
-      routerConfig: router,
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp.router(
+          title: 'Word Master',
+          debugShowCheckedModeBanner: false,
+          theme: themeProvider.lightTheme,
+          darkTheme: themeProvider.darkTheme,
+          themeMode: themeProvider.isDarkMode
+              ? ThemeMode.dark
+              : ThemeMode.light,
+          routerConfig: router,
+        );
+      },
     );
   }
 }

@@ -2,19 +2,23 @@ import 'package:flutter/widgets.dart';
 import '../core/model/word_model.dart';
 import '../core/repositories/word_repository.dart';
 import '../core/repositories/streak_repository.dart';
+import '../core/repositories/xp_repository.dart';
 
 /// ViewModel for Add Word screen
 /// Handles adding, updating, and deleting words
-/// Updates streak after successful word addition
+/// Updates streak and awards XP after successful word addition
 class AddWordViewModel extends ChangeNotifier {
   final WordRepository _wordRepository;
   final StreakRepository _streakRepository;
+  final XPRepository _xpRepository;
 
   AddWordViewModel({
     required WordRepository wordRepository,
     required StreakRepository streakRepository,
+    required XPRepository xpRepository,
   })  : _wordRepository = wordRepository,
-        _streakRepository = streakRepository;
+        _streakRepository = streakRepository,
+        _xpRepository = xpRepository;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -22,8 +26,8 @@ class AddWordViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
-  /// Add a new word
-  Future<bool> addWord(Word word) async {
+  /// Add a new word and award XP
+  Future<({bool success, bool leveledUp})> addWord(Word word) async {
     try {
       _isLoading = true;
       _error = null;
@@ -34,15 +38,18 @@ class AddWordViewModel extends ChangeNotifier {
       // Update streak after adding word
       await _streakRepository.updateStreak(hasActivityToday: true);
 
+      // Award XP based on word complexity and completeness
+      final xpResult = await _xpRepository.addXP(word.xp);
+
       _isLoading = false;
       _safeNotify();
-      return true;
+      return (success: true, leveledUp: xpResult.leveledUp);
     } catch (e) {
       debugPrint('Error adding word: $e');
       _error = 'Failed to add word: $e';
       _isLoading = false;
       _safeNotify();
-      return false;
+      return (success: false, leveledUp: false);
     }
   }
 

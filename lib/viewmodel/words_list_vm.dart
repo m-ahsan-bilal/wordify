@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/widgets.dart';
 import '../core/repositories/word_repository.dart';
+import '../core/model/word_model.dart';
 
 /// ViewModel for Words List screen
 /// Handles loading, grouping, and displaying words by date
@@ -122,6 +123,63 @@ class WordsListViewModel extends ChangeNotifier {
       debugPrint('Error getting words count: $e');
       return 0;
     }
+  }
+
+  /// Calculate total XP from all words
+  int getTotalXP() {
+    int totalXP = 0;
+    
+    // Add XP from today's words
+    for (var wordMap in todaysWords) {
+      final word = Word.fromMap(wordMap);
+      totalXP += word.xp;
+    }
+    
+    // Add XP from yesterday's words
+    for (var wordMap in yesterdaysWords) {
+      final word = Word.fromMap(wordMap);
+      totalXP += word.xp;
+    }
+    
+    // Add XP from older words
+    olderWords.values.forEach((words) {
+      for (var wordMap in words) {
+        final word = Word.fromMap(wordMap);
+        totalXP += word.xp;
+      }
+    });
+    
+    return totalXP;
+  }
+
+  /// Get XP for a specific word map
+  int getWordXP(Map<String, dynamic> wordMap) {
+    final word = Word.fromMap(wordMap);
+    return word.xp;
+  }
+
+  /// Get level for a specific word map
+  int getWordLevel(Map<String, dynamic> wordMap) {
+    final word = Word.fromMap(wordMap);
+    return word.level;
+  }
+
+  /// Check if a word is new
+  bool isWordNew(Map<String, dynamic> wordMap) {
+    final word = Word.fromMap(wordMap);
+    return word.isNew;
+  }
+
+  /// Check if a word is mastered
+  bool isWordMastered(Map<String, dynamic> wordMap) {
+    final word = Word.fromMap(wordMap);
+    return word.isMastered;
+  }
+
+  /// Get review status text for a word
+  String getWordReviewStatus(Map<String, dynamic> wordMap) {
+    final word = Word.fromMap(wordMap);
+    return word.reviewStatusText;
   }
 
   /// Safely notify listeners (avoids build-phase issues)

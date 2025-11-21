@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:go_router/go_router.dart';
+import '../core/utils/app_colors.dart';
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
@@ -87,7 +87,7 @@ class _QuizScreenState extends State<QuizScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              context.go('/home');
+              Navigator.pop(context);
             },
             child: const Text('Done'),
           ),
@@ -115,8 +115,17 @@ class _QuizScreenState extends State<QuizScreen> {
     final options = _generateOptions(q['meaning']);
 
     return Scaffold(
+      backgroundColor: ThemeColors.getBackgroundColor(context),
       appBar: AppBar(
-        title: Text('Quiz ${currentQuestion + 1}/${questions.length}'),
+        backgroundColor: ThemeColors.getBackgroundColor(context),
+        title: Text(
+          'Quiz ${currentQuestion + 1}/${questions.length}',
+          style: TextStyle(color: ThemeColors.getTextColor(context)),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: ThemeColors.getTextColor(context)),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.all(12.0),

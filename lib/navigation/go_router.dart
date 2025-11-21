@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import '../landing/onboarding.dart';
 import '../landing/splash_screen.dart';
+import '../view/about_screen.dart';
 import '../view/add_word.dart';
 import '../view/home_screen.dart';
 import '../view/quiz_screen.dart';
@@ -44,6 +45,10 @@ class AppRouter {
         GoRoute(
           path: '/list',
           builder: (_, __) => const WordsListScreen(),
+        ),
+        GoRoute(
+          path: '/about',
+          builder: (_, __) => const AboutScreen(),
         ),
       ],
     );
