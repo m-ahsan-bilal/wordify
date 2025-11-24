@@ -21,6 +21,16 @@ class StreakRepositoryImpl implements StreakRepository {
     // Primary: Get from local storage
     final streak = await _localDatasource.getStreak();
 
+    // Validate and reset streak if needed (check if streak is broken)
+    // This ensures streak is always accurate when loaded
+    final validatedStreak = _validateStreak(streak);
+    
+    // If streak was reset, save it
+    if (validatedStreak.currentStreak != streak.currentStreak ||
+        validatedStreak.lastActivityDate != streak.lastActivityDate) {
+      await saveStreak(validatedStreak);
+    }
+
     // TODO: Later, merge with remote if needed
     // if (shouldSyncWithRemote) {
     //   final remoteStreak = await _remoteDatasource.getStreak();
@@ -31,6 +41,34 @@ class StreakRepositoryImpl implements StreakRepository {
     //   }
     // }
 
+    return validatedStreak;
+  }
+
+  /// Validate streak and reset if broken (no activity for more than 1 day)
+  Streak _validateStreak(Streak streak) {
+    if (streak.lastActivityDate == null) {
+      // No previous activity, ensure streak is 0
+      if (streak.currentStreak > 0) {
+        return Streak(currentStreak: 0, lastActivityDate: null);
+      }
+      return streak;
+    }
+
+    final today = DateTime.now();
+    final lastDate = DateTime(
+      streak.lastActivityDate!.year,
+      streak.lastActivityDate!.month,
+      streak.lastActivityDate!.day,
+    );
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final daysDifference = todayDate.difference(lastDate).inDays;
+
+    // If more than 1 day has passed since last activity, reset streak
+    if (daysDifference > 1) {
+      return Streak(currentStreak: 0, lastActivityDate: null);
+    }
+
+    // Streak is still valid
     return streak;
   }
 

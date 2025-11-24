@@ -8,7 +8,12 @@ import 'package:word_master/core/utils/app_colors.dart';
 import 'package:word_master/core/utils/theme_provider.dart';
 import '../viewmodel/streak_vm.dart';
 import '../viewmodel/xp_vm.dart';
+import '../viewmodel/quiz_vm.dart';
 import '../core/repositories/word_repository.dart';
+import '../core/repositories/quiz_repository.dart';
+import '../core/model/word_model.dart';
+import '../core/model/quiz_model.dart';
+import 'widgets/quiz_dialog.dart';
 
 /// Home Screen - Uses StreakViewModel and WordRepository
 /// Follows MVVM pattern: UI talks only to ViewModels/Repositories
@@ -26,6 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = false;
   bool _hasLoadedInitialData = false;
   final flutterTts = FlutterTts();
+  List<Word> _allWords = [];
+  int _currentQuizWordIndex = 0; // Track which word to quiz next
   @override
   void initState() {
     super.initState();
@@ -66,7 +73,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final streakVm = context.read<StreakViewModel>();
-      await streakVm.loadStreak();
+      // Validate streak first (will reset if broken, then load)
+      await streakVm.validateStreak();
 
       final xpVm = context.read<XPViewModel>();
       await xpVm.loadXP();
@@ -74,6 +82,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final wordRepo = context.read<WordRepository>();
       final words = await wordRepo.getTodaysWords();
       final wordsCount = await wordRepo.getWordsCount();
+      
+      // Load all words for quiz generation
+      final allWordsData = await wordRepo.getAllWords();
+      _allWords = allWordsData.map((w) => Word.fromMap(w)).toList();
 
     // Sort words by dateAdded to get the most recent first
     final sortedWords = List<Map<String, dynamic>>.from(words);
@@ -134,6 +146,100 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       // Handle TTS errors gracefully
       debugPrint('TTS Error: $e');
+    }
+  }
+
+  /// Handle swipe gesture to start quiz
+  Future<void> _handleSwipeQuiz(QuizType type) async {
+    if (_allWords.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No words available for quiz'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Get words that should be quizzed (cycles through all words)
+    final quizRepository = context.read<QuizRepository>();
+    final wordsToQuiz = await quizRepository.getWordsToQuiz(_allWords);
+    
+    if (wordsToQuiz.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No words available for quiz'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Cycle through words - use modulo to wrap around
+    final word = wordsToQuiz[_currentQuizWordIndex % wordsToQuiz.length];
+    
+    // Increment index for next quiz
+    setState(() {
+      _currentQuizWordIndex = (_currentQuizWordIndex + 1) % wordsToQuiz.length;
+    });
+
+    // Check if word has required data
+    if (type == QuizType.synonym && word.synonyms.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('This word has no synonyms available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (type == QuizType.antonym && word.antonyms.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('This word has no antonyms available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (type == QuizType.meaning && word.meaning.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('This word has no meaning available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final quizVm = context.read<QuizViewModel>();
+    final question = await quizVm.generateQuestion(word, type, _allWords);
+
+    if (question == null) {
+      if (quizVm.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(quizVm.error!),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Show quiz dialog
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => QuizDialog(question: question),
+    );
+
+    // Refresh XP if answer was correct
+    if (result == true) {
+      final xpVm = context.read<XPViewModel>();
+      await xpVm.loadXP();
     }
   }
 
@@ -304,15 +410,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                // Today's Word Card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: ThemeColors.getCardColor(context),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Column(
+                // Today's Word Card with Swipe Gestures
+                GestureDetector(
+                  onVerticalDragEnd: (details) {
+                    // Swipe Up - lower threshold for better detection
+                    if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
+                      _handleSwipeQuiz(QuizType.meaning);
+                    }
+                  },
+                  onHorizontalDragEnd: (details) {
+                    // Swipe Left - lower threshold
+                    if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
+                      _handleSwipeQuiz(QuizType.synonym);
+                    }
+                    // Swipe Right - lower threshold
+                    if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+                      _handleSwipeQuiz(QuizType.antonym);
+                    }
+                  },
+                  // Also handle drag updates for better feedback
+                  onVerticalDragUpdate: (details) {
+                    // Optional: Add visual feedback during drag
+                  },
+                  onHorizontalDragUpdate: (details) {
+                    // Optional: Add visual feedback during drag
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: ThemeColors.getCardColor(context),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -389,7 +519,72 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(width: 12),
                         ],
                       ),
+                      if (_allWords.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.swipe_up,
+                                  size: 14,
+                                  color: ThemeColors.getSecondaryTextColor(context),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '↑ Meaning',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: ThemeColors.getSecondaryTextColor(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.swipe_left,
+                                  size: 14,
+                                  color: ThemeColors.getSecondaryTextColor(context),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '← Synonym',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: ThemeColors.getSecondaryTextColor(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.swipe_right,
+                                  size: 14,
+                                  color: ThemeColors.getSecondaryTextColor(context),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '→ Antonym',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: ThemeColors.getSecondaryTextColor(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
+                  ),
                   ),
                 ),
 
@@ -417,7 +612,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   value: streakVm.streak.currentStreak
                                       .toString(),
                                   label: 'Day streak',
-                                  color: ThemeColors.getPrimaryColor(context),
                                   isCompact: true,
                                 ),
                                 const SizedBox(height: 12),
@@ -432,9 +626,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 .getXPDisplayText()
                                                 .replaceAll(' XP', ''),
                                             label: 'XP',
-                                            color: ThemeColors.getPrimaryColor(
-                                              context,
-                                            ),
                                             isCompact: true,
                                           );
                                         },
@@ -446,9 +637,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         icon: Icons.today,
                                         value: todaysWords.length.toString(),
                                         label: 'Today',
-                                        color: ThemeColors.getPrimaryColor(
-                                          context,
-                                        ),
                                         isCompact: true,
                                       ),
                                     ),
@@ -467,7 +655,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     value: streakVm.streak.currentStreak
                                         .toString(),
                                     label: 'Day streak',
-                                    color: ThemeColors.getPrimaryColor(context),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -480,9 +667,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                             .getXPDisplayText()
                                             .replaceAll(' XP', ''),
                                         label: 'XP',
-                                        color: ThemeColors.getPrimaryColor(
-                                          context,
-                                        ),
                                       );
                                     },
                                   ),
@@ -493,7 +677,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     icon: Icons.today,
                                     value: todaysWords.length.toString(),
                                     label: 'Today',
-                                    color: ThemeColors.getPrimaryColor(context),
                                   ),
                                 ),
                               ],
@@ -728,22 +911,41 @@ class _HomeScreenState extends State<HomeScreen> {
     required IconData icon,
     required String value,
     required String label,
-    required Color color,
     bool isCompact = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       padding: EdgeInsets.all(isCompact ? 12 : 16),
       constraints: const BoxConstraints(minWidth: 80, maxWidth: 120),
       decoration: BoxDecoration(
-        color: color,
+        // Use splash screen logo container color
+        color: ThemeColors.getStatCardColor(context),
         borderRadius: BorderRadius.circular(16),
+        // Add subtle shadow for depth
+        boxShadow: isDark
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
-            color: ThemeColors.getTextColor(context),
+            // Use splash screen icon color
+            color: ThemeColors.getStatCardIconColor(context),
             size: isCompact ? 20 : 24,
           ),
           SizedBox(height: isCompact ? 4 : 8),
@@ -754,7 +956,8 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: isCompact ? 20 : 24,
                 fontWeight: FontWeight.bold,
-                color: ThemeColors.getTextColor(context),
+                // Use splash screen text color
+                color: ThemeColors.getStatCardIconColor(context),
               ),
             ),
           ),
@@ -765,7 +968,9 @@ class _HomeScreenState extends State<HomeScreen> {
               label,
               style: TextStyle(
                 fontSize: isCompact ? 10 : 12,
-                color: ThemeColors.getSecondaryTextColor(context),
+                color: isDark
+                    ? ThemeColors.getSecondaryTextColor(context)
+                    : AppColors.lightGray,
               ),
               textAlign: TextAlign.center,
             ),

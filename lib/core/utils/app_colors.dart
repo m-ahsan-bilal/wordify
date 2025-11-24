@@ -24,6 +24,11 @@ class AppColors {
   static const Color darkOnBackground = Color(0xFFFFFFFF);
   static const Color darkDivider = Color(0xFF404040);
   static const Color darkBorder = Color(0xFF404040);
+  
+  // Dark theme stat card color (darker purple with black shades)
+  // Smooth dark purple-black that matches splash screen aesthetic
+  static const Color darkStatCard = Color(0xFF2D1F3D); // Smooth dark purple-black
+  static const Color darkStatCardLight = Color(0xFF3D2F5A); // Lighter variant for contrast
 }
 
 /// Theme helper class to get colors based on current theme
@@ -69,5 +74,17 @@ class ThemeColors {
 
   static Color getOnSecondaryColor(BuildContext context) {
     return Theme.of(context).colorScheme.onSecondary;
+  }
+
+  /// Get stat card background color (matches splash screen logo container)
+  static Color getStatCardColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppColors.darkStatCard : AppColors.lightPurple;
+  }
+
+  /// Get stat card icon/text color (matches splash screen)
+  static Color getStatCardIconColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? AppColors.darkSecondary : AppColors.darkGray;
   }
 }

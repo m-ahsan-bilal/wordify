@@ -4,7 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 /// Notification Service - Handles Firebase Cloud Messaging
 /// Singleton pattern for global access
 /// Supports navigation payloads for routing
-/// 
+///
 /// Note: This service uses Firebase Cloud Messaging exclusively.
 /// For scheduled notifications, use Firebase Cloud Functions to send messages at specific times.
 class NotificationService {
@@ -16,6 +16,7 @@ class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   bool _initialized = false;
+  String? _fcmToken;
 
   // Callback for handling notification clicks (set from main.dart)
   void Function(String? payload)? onNotificationClick;
@@ -23,31 +24,76 @@ class NotificationService {
   /// Initialize notification service
   Future<void> init() async {
     if (_initialized) return;
-    _initialized = true;
 
-    // Request notification permissions (Android 13+, iOS)
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
+    try {
+      _initialized = true;
 
-    // Foreground message handler
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      // Request notification permissions (Android 13+, iOS)
+      try {
+        await _messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+      } catch (e) {
+        debugPrint('Permission request error: $e');
+        // Continue even if permission request fails
+      }
 
-    // Notification clicked when app is in background
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageClick);
+      // Foreground message handler (with error handling)
+      try {
+        FirebaseMessaging.onMessage.listen(
+          _handleForegroundMessage,
+          onError: (error) {
+            debugPrint('Foreground message error: $error');
+          },
+        );
+      } catch (e) {
+        debugPrint('Foreground message handler setup error: $e');
+      }
 
-    // Handle notification that opened the app from terminated state
-    final initialMessage = await _messaging.getInitialMessage();
-    if (initialMessage != null) {
-      _handleMessageClick(initialMessage);
+      // Notification clicked when app is in background
+      try {
+        FirebaseMessaging.onMessageOpenedApp.listen(
+          _handleMessageClick,
+          onError: (error) {
+            debugPrint('Message opened app error: $error');
+          },
+        );
+      } catch (e) {
+        debugPrint('Message opened app handler setup error: $e');
+      }
+
+      // Handle notification that opened the app from terminated state
+      try {
+        final initialMessage = await _messaging.getInitialMessage();
+        if (initialMessage != null) {
+          _handleMessageClick(initialMessage);
+        }
+      } catch (e) {
+        debugPrint('Initial message error: $e');
+      }
+
+      // Get FCM token (required for topic subscriptions)
+      try {
+        _fcmToken = await _messaging.getToken();
+        if (_fcmToken != null) {
+          debugPrint('FCM Token: $_fcmToken');
+        } else {
+          debugPrint('FCM Token is null');
+        }
+      } catch (e) {
+        debugPrint('FCM token error: $e');
+        // Token generation is important for subscriptions, but continue
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Notification service init error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      // Reset initialized flag so we can retry later
+      _initialized = false;
+      rethrow; // Re-throw to let caller handle
     }
-
-    // Optional: log FCM token
-    final token = await _messaging.getToken();
-    debugPrint('FCM Token: $token');
   }
 
   /// Handle foreground FCM message
@@ -82,8 +128,26 @@ class NotificationService {
   /// Subscribe to a topic
   /// Use topics to send notifications to multiple devices
   Future<void> subscribeToTopic(String topic) async {
-    await _messaging.subscribeToTopic(topic);
-    debugPrint('Subscribed to topic: $topic');
+    try {
+      // Ensure we have FCM token before subscribing
+      if (_fcmToken == null) {
+        debugPrint('Waiting for FCM token before subscribing to $topic...');
+        _fcmToken = await _messaging.getToken();
+        if (_fcmToken == null) {
+          debugPrint('FCM token still null, cannot subscribe to $topic');
+          return;
+        }
+      }
+
+      // Wait a bit to ensure Firebase Messaging is ready
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      await _messaging.subscribeToTopic(topic);
+      debugPrint('Successfully subscribed to topic: $topic');
+    } catch (e) {
+      debugPrint('Failed to subscribe to topic $topic: $e');
+      // Don't rethrow - allow app to continue, subscription can retry later
+    }
   }
 
   /// Unsubscribe from a topic
@@ -135,21 +199,51 @@ class NotificationService {
   /// Subscribe to daily reminders topic
   /// Your backend will send notifications to this topic at scheduled times
   Future<void> enableDailyReminders() async {
-    await subscribeToTopic('daily_reminders');
+    if (!_initialized) {
+      debugPrint(
+        'Notification service not initialized, cannot enable daily reminders',
+      );
+      return;
+    }
+    try {
+      await subscribeToTopic('daily_reminders');
+    } catch (e) {
+      debugPrint('Failed to enable daily reminders: $e');
+      // Don't rethrow - allow app to continue
+    }
   }
 
   /// Unsubscribe from daily reminders
   Future<void> disableDailyReminders() async {
-    await unsubscribeFromTopic('daily_reminders');
+    try {
+      await unsubscribeFromTopic('daily_reminders');
+    } catch (e) {
+      debugPrint('Failed to disable daily reminders: $e');
+    }
   }
 
   /// Subscribe to streak alerts topic
   Future<void> enableStreakAlerts() async {
-    await subscribeToTopic('streak_alerts');
+    if (!_initialized) {
+      debugPrint(
+        'Notification service not initialized, cannot enable streak alerts',
+      );
+      return;
+    }
+    try {
+      await subscribeToTopic('streak_alerts');
+    } catch (e) {
+      debugPrint('Failed to enable streak alerts: $e');
+      // Don't rethrow - allow app to continue
+    }
   }
 
   /// Unsubscribe from streak alerts
   Future<void> disableStreakAlerts() async {
-    await unsubscribeFromTopic('streak_alerts');
+    try {
+      await unsubscribeFromTopic('streak_alerts');
+    } catch (e) {
+      debugPrint('Failed to disable streak alerts: $e');
+    }
   }
 }

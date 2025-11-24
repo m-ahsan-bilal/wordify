@@ -28,15 +28,17 @@ class Streak {
   /// Returns a new Streak object with updated values
   Streak calculateStreak({required bool hasActivityToday}) {
     final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
 
-    if (!hasActivityToday) {
-      // If no activity today, don't update
-      return this;
-    }
-
-    // If no previous activity, start new streak
+    // If no previous activity
     if (lastActivityDate == null) {
-      return Streak(currentStreak: 1, lastActivityDate: today);
+      if (hasActivityToday) {
+        // Start new streak
+        return Streak(currentStreak: 1, lastActivityDate: today);
+      } else {
+        // No activity and no previous activity, keep at 0
+        return this;
+      }
     }
 
     // Calculate days difference
@@ -45,18 +47,32 @@ class Streak {
       lastActivityDate!.month,
       lastActivityDate!.day,
     );
-    final todayDate = DateTime(today.year, today.month, today.day);
     final daysDifference = todayDate.difference(lastDate).inDays;
 
-    if (daysDifference == 0) {
-      // Same day, no change
-      return this;
-    } else if (daysDifference == 1) {
-      // Consecutive day, increment streak
-      return Streak(currentStreak: currentStreak + 1, lastActivityDate: today);
+    if (hasActivityToday) {
+      // User has activity today
+      if (daysDifference == 0) {
+        // Same day, no change
+        return this;
+      } else if (daysDifference == 1) {
+        // Consecutive day, increment streak
+        return Streak(currentStreak: currentStreak + 1, lastActivityDate: today);
+      } else {
+        // Streak broken (missed days), reset to 1
+        return Streak(currentStreak: 1, lastActivityDate: today);
+      }
     } else {
-      // Streak broken, reset to 1
-      return Streak(currentStreak: 1, lastActivityDate: today);
+      // No activity today - check if streak should be reset
+      if (daysDifference == 0) {
+        // Same day but no activity yet, keep current streak
+        return this;
+      } else if (daysDifference >= 1) {
+        // Missed a day or more, reset streak to 0
+        return Streak(currentStreak: 0, lastActivityDate: null);
+      } else {
+        // This shouldn't happen, but keep current streak
+        return this;
+      }
     }
   }
 

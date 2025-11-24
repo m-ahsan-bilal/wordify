@@ -28,13 +28,17 @@ class StreakViewModel extends ChangeNotifier {
   String? get error => _error;
 
   /// Load current streak data
+  /// This also validates and resets the streak if it's broken
   Future<void> loadStreak() async {
     try {
       _isLoading = true;
       _error = null;
       _safeNotify();
 
+      // Get streak (this will validate and reset if broken)
       _streak = await _streakRepository.getStreak();
+      
+      // Also check if streak is at risk (will break if no activity today)
       _isStreakAtRisk = await _streakRepository.isStreakAtRisk();
 
       _isLoading = false;
@@ -48,19 +52,42 @@ class StreakViewModel extends ChangeNotifier {
   }
 
   /// Update streak based on today's activity
+  /// This should be called when a word is added or when checking streak status
   Future<void> updateStreak() async {
     try {
       // Check if user has added words today
       final todaysWords = await _wordRepository.getTodaysWords();
       final hasActivityToday = todaysWords.isNotEmpty;
 
+      // Update streak with today's activity status
       await _streakRepository.updateStreak(hasActivityToday: hasActivityToday);
 
-      // Reload streak data
+      // Reload streak data to get updated values
       await loadStreak();
     } catch (e) {
       debugPrint('Failed to update streak: $e');
       _error = 'Failed to update streak';
+      _safeNotify();
+    }
+  }
+
+  /// Validate and update streak on app load
+  /// This ensures streak is reset if user missed days
+  Future<void> validateStreak() async {
+    try {
+      // First, check if streak should be reset (no activity for >1 day)
+      // This is done automatically in getStreak(), but we also update based on today's activity
+      final todaysWords = await _wordRepository.getTodaysWords();
+      final hasActivityToday = todaysWords.isNotEmpty;
+
+      // Update streak (will reset if broken, increment if consecutive)
+      await _streakRepository.updateStreak(hasActivityToday: hasActivityToday);
+
+      // Reload to get validated streak
+      await loadStreak();
+    } catch (e) {
+      debugPrint('Failed to validate streak: $e');
+      _error = 'Failed to validate streak';
       _safeNotify();
     }
   }
