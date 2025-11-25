@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -39,8 +41,16 @@ class _AddWordScreenState extends State<AddWordScreen> {
     return [
       {'name': l10n.book, 'icon': Icons.menu_book, 'color': Colors.blue},
       {'name': l10n.article, 'icon': Icons.article, 'color': Colors.green},
-      {'name': l10n.youtube, 'icon': Icons.play_circle_filled, 'color': Colors.red},
-      {'name': l10n.conversation, 'icon': Icons.chat_bubble, 'color': Colors.orange},
+      {
+        'name': l10n.youtube,
+        'icon': Icons.play_circle_filled,
+        'color': Colors.red,
+      },
+      {
+        'name': l10n.conversation,
+        'icon': Icons.chat_bubble,
+        'color': Colors.orange,
+      },
       {'name': l10n.other, 'icon': Icons.more_horiz, 'color': Colors.grey},
     ];
   }
@@ -639,9 +649,9 @@ class _AddWordScreenState extends State<AddWordScreen> {
           Wrap(
             spacing: 12,
             runSpacing: 12,
-            children: _getSources(context)
-                .map((source) => _buildSourceChip(source))
-                .toList(),
+            children: _getSources(
+              context,
+            ).map((source) => _buildSourceChip(source)).toList(),
           ),
           // const SizedBox(height: 16),
           // GestureDetector(
