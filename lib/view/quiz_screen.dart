@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../core/utils/app_colors.dart';
+import '../l10n/app_localizations.dart';
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
@@ -81,15 +82,15 @@ class _QuizScreenState extends State<QuizScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Quiz Completed'),
-        content: Text('You scored $score out of ${questions.length}'),
+        title: Text(AppLocalizations.of(context)!.quizCompleted),
+        content: Text('${AppLocalizations.of(context)!.youScored} $score ${AppLocalizations.of(context)!.outOf} ${questions.length}'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               Navigator.pop(context);
             },
-            child: const Text('Done'),
+            child: Text(AppLocalizations.of(context)!.done),
           ),
         ],
       ),
@@ -106,8 +107,8 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     if (questions.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('No words available for quiz')),
+      return Scaffold(
+        body: Center(child: Text(AppLocalizations.of(context)!.noWordsAvailableForQuiz)),
       );
     }
 
@@ -119,7 +120,7 @@ class _QuizScreenState extends State<QuizScreen> {
       appBar: AppBar(
         backgroundColor: ThemeColors.getBackgroundColor(context),
         title: Text(
-          'Quiz ${currentQuestion + 1}/${questions.length}',
+          AppLocalizations.of(context)!.quizTitle(currentQuestion + 1, questions.length),
           style: TextStyle(color: ThemeColors.getTextColor(context)),
         ),
         leading: IconButton(
@@ -141,7 +142,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     strokeWidth: 4,
                   ),
                 ),
-                Text('$timeLeft s', style: const TextStyle(fontSize: 12)),
+                Text('$timeLeft ${AppLocalizations.of(context)!.seconds}', style: TextStyle(fontSize: 12)),
               ],
             ),
           ),
@@ -160,7 +161,7 @@ class _QuizScreenState extends State<QuizScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'What is the meaning of "${q['word']}"?',
+                  AppLocalizations.of(context)!.whatIsTheMeaningOf(q['word']),
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -201,7 +202,7 @@ class _QuizScreenState extends State<QuizScreen> {
   String? _selectedOption;
 
   List<String> _generateOptions(dynamic correct) {
-    final correctStr = correct?.toString() ?? 'No meaning available';
+    final correctStr = correct?.toString() ?? AppLocalizations.of(context)!.noMeaningAvailable;
     final allWords = wordsBox.values.toList().cast<Map>();
     final options = <String>[correctStr];
 

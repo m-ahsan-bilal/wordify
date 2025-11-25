@@ -35,27 +35,8 @@ class QuizViewModel extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // Check if word has required data for the quiz type
-      if (type == QuizType.synonym && word.synonyms.isEmpty) {
-        _error = 'This word has no synonyms available';
-        _isLoading = false;
-        notifyListeners();
-        return null;
-      }
-
-      if (type == QuizType.antonym && word.antonyms.isEmpty) {
-        _error = 'This word has no antonyms available';
-        _isLoading = false;
-        notifyListeners();
-        return null;
-      }
-
-      if (type == QuizType.meaning && word.meaning.isEmpty) {
-        _error = 'This word has no meaning available';
-        _isLoading = false;
-        notifyListeners();
-        return null;
-      }
+      // Note: Since meaning, synonyms, and antonyms are now required fields,
+      // we don't need to check for empty values here
 
       _currentQuestion = await _quizRepository.generateQuestion(
         word,

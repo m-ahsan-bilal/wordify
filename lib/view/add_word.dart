@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/model/word_model.dart';
 import '../core/utils/app_colors.dart';
 import '../viewmodel/add_word_vm.dart';
+import '../l10n/app_localizations.dart';
 
 /// Add Word Screen - Uses AddWordViewModel to manage word addition
 /// Follows MVVM pattern: UI talks only to ViewModel
@@ -32,14 +33,17 @@ class _AddWordScreenState extends State<AddWordScreen> {
   // Selected source
   String _selectedSource = '';
 
-  // Available sources
-  final List<Map<String, dynamic>> _sources = [
-    {'name': 'Book', 'icon': Icons.menu_book, 'color': Colors.blue},
-    {'name': 'Article', 'icon': Icons.article, 'color': Colors.green},
-    {'name': 'YouTube', 'icon': Icons.play_circle_filled, 'color': Colors.red},
-    {'name': 'Conversation', 'icon': Icons.chat_bubble, 'color': Colors.orange},
-    {'name': 'Other', 'icon': Icons.more_horiz, 'color': Colors.grey},
-  ];
+  // Available sources - names are localized via ARB file
+  List<Map<String, dynamic>> _getSources(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      {'name': l10n.book, 'icon': Icons.menu_book, 'color': Colors.blue},
+      {'name': l10n.article, 'icon': Icons.article, 'color': Colors.green},
+      {'name': l10n.youtube, 'icon': Icons.play_circle_filled, 'color': Colors.red},
+      {'name': l10n.conversation, 'icon': Icons.chat_bubble, 'color': Colors.orange},
+      {'name': l10n.other, 'icon': Icons.more_horiz, 'color': Colors.grey},
+    ];
+  }
 
   @override
   void initState() {
@@ -90,9 +94,10 @@ class _AddWordScreenState extends State<AddWordScreen> {
       // Show success feedback
       HapticFeedback.mediumImpact();
 
-      String message = 'Word added! +${word.xp} XP earned.';
+      final l10n = AppLocalizations.of(context)!;
+      String message = l10n.addWordSuccess(word.xp);
       if (result.leveledUp) {
-        message = 'Word added! +${word.xp} XP earned. 🎉 LEVEL UP!';
+        message = l10n.addWordLevelUp(word.xp);
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -129,7 +134,12 @@ class _AddWordScreenState extends State<AddWordScreen> {
             children: [
               const Icon(Icons.error, color: Colors.white),
               const SizedBox(width: 8),
-              Expanded(child: Text(viewModel.error ?? 'Failed to add word')),
+              Expanded(
+                child: Text(
+                  viewModel.error ??
+                      AppLocalizations.of(context)!.failedToAddWord,
+                ),
+              ),
             ],
           ),
           backgroundColor: Colors.red,
@@ -169,7 +179,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Add New Word',
+          AppLocalizations.of(context)!.addNewWord,
           style: TextStyle(
             color: ThemeColors.getTextColor(context),
             fontSize: 20,
@@ -180,7 +190,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
           IconButton(
             icon: Icon(Icons.refresh, color: ThemeColors.getTextColor(context)),
             onPressed: _clearForm,
-            tooltip: 'Clear form',
+            tooltip: AppLocalizations.of(context)!.clearForm,
           ),
         ],
       ),
@@ -240,7 +250,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Word',
+            AppLocalizations.of(context)!.word,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -254,7 +264,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
             textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => _meaningFocus.requestFocus(),
             decoration: InputDecoration(
-              hintText: 'Enter the new word',
+              hintText: AppLocalizations.of(context)!.enterTheNewWord,
               hintStyle: TextStyle(
                 color: ThemeColors.getSecondaryTextColor(
                   context,
@@ -276,12 +286,13 @@ class _AddWordScreenState extends State<AddWordScreen> {
               fontWeight: FontWeight.w500,
               color: ThemeColors.getTextColor(context),
             ),
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Please enter a word' : null,
+            validator: (v) => v == null || v.trim().isEmpty
+                ? AppLocalizations.of(context)!.pleaseEnterAWord
+                : null,
           ),
           const SizedBox(height: 8),
           Text(
-            'Auto-focus',
+            AppLocalizations.of(context)!.autoFocus,
             style: TextStyle(
               fontSize: 12,
               color: ThemeColors.getSecondaryTextColor(context),
@@ -305,11 +316,19 @@ class _AddWordScreenState extends State<AddWordScreen> {
           Row(
             children: [
               Text(
-                'Meanings',
+                AppLocalizations.of(context)!.meanings,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: ThemeColors.getTextColor(context),
+                ),
+              ),
+              const Text(
+                ' *',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               // const Spacer(),
@@ -330,7 +349,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
             onFieldSubmitted: (_) => _synonymsFocus.requestFocus(),
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'An unexpected discovery',
+              hintText: AppLocalizations.of(context)!.meaningsHint,
               hintStyle: TextStyle(
                 color: ThemeColors.getSecondaryTextColor(
                   context,
@@ -349,8 +368,28 @@ class _AddWordScreenState extends State<AddWordScreen> {
             ),
             style: TextStyle(fontSize: 14, color: AppColors.darkGray),
             validator: (v) => v == null || v.trim().isEmpty
-                ? 'Please enter the meaning'
+                ? AppLocalizations.of(context)!.pleaseEnterTheMeaning
                 : null,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Text(
+                ' *',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                AppLocalizations.of(context)!.thisFieldIsRequired,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: ThemeColors.getSecondaryTextColor(context),
+                ),
+              ),
+            ],
           ),
           // const SizedBox(height: 12),
           // Wrap(
@@ -376,13 +415,25 @@ class _AddWordScreenState extends State<AddWordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Synonyms',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: ThemeColors.getTextColor(context),
-            ),
+          Row(
+            children: [
+              Text(
+                AppLocalizations.of(context)!.synonyms,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeColors.getTextColor(context),
+                ),
+              ),
+              const Text(
+                ' *',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -391,7 +442,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
             textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => _antonymsFocus.requestFocus(),
             decoration: InputDecoration(
-              hintText: 'Fortunate, chance',
+              hintText: AppLocalizations.of(context)!.synonymsHint,
               hintStyle: TextStyle(
                 color: ThemeColors.getSecondaryTextColor(
                   context,
@@ -409,6 +460,9 @@ class _AddWordScreenState extends State<AddWordScreen> {
               ),
             ),
             style: TextStyle(fontSize: 14, color: AppColors.darkGray),
+            validator: (v) => v == null || v.trim().isEmpty
+                ? AppLocalizations.of(context)!.thisFieldIsRequired
+                : null,
           ),
           // const SizedBox(height: 12),
           // Wrap(
@@ -435,13 +489,25 @@ class _AddWordScreenState extends State<AddWordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Antonyms',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: ThemeColors.getTextColor(context),
-            ),
+          Row(
+            children: [
+              Text(
+                AppLocalizations.of(context)!.antonyms,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeColors.getTextColor(context),
+                ),
+              ),
+              const Text(
+                ' *',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -450,7 +516,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
             textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => _sentenceFocus.requestFocus(),
             decoration: InputDecoration(
-              hintText: 'Planned, intentional',
+              hintText: AppLocalizations.of(context)!.antonymsHint,
               hintStyle: TextStyle(
                 color: ThemeColors.getSecondaryTextColor(
                   context,
@@ -468,6 +534,9 @@ class _AddWordScreenState extends State<AddWordScreen> {
               ),
             ),
             style: TextStyle(fontSize: 14, color: AppColors.darkGray),
+            validator: (v) => v == null || v.trim().isEmpty
+                ? AppLocalizations.of(context)!.thisFieldIsRequired
+                : null,
           ),
           // const SizedBox(height: 12),
           // Wrap(
@@ -494,7 +563,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Use in a Sentence',
+            AppLocalizations.of(context)!.useInSentence,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -503,7 +572,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Make it personal',
+            AppLocalizations.of(context)!.makeItPersonal,
             style: TextStyle(
               fontSize: 12,
               color: ThemeColors.getSecondaryTextColor(context),
@@ -516,7 +585,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
             textInputAction: TextInputAction.done,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'Use this word in your own sentence',
+              hintText: AppLocalizations.of(context)!.sentenceHint,
               hintStyle: TextStyle(
                 color: ThemeColors.getSecondaryTextColor(
                   context,
@@ -551,7 +620,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Where did you learn this word? (Source)',
+            AppLocalizations.of(context)!.whereDidYouLearnThisWord,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -560,7 +629,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose source',
+            AppLocalizations.of(context)!.chooseSource,
             style: TextStyle(
               fontSize: 12,
               color: ThemeColors.getSecondaryTextColor(context),
@@ -570,7 +639,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
           Wrap(
             spacing: 12,
             runSpacing: 12,
-            children: _sources
+            children: _getSources(context)
                 .map((source) => _buildSourceChip(source))
                 .toList(),
           ),
@@ -743,8 +812,8 @@ class _AddWordScreenState extends State<AddWordScreen> {
                   color: Colors.white,
                 ),
               )
-            : const Text(
-                'Save Word',
+            : Text(
+                AppLocalizations.of(context)!.saveWord,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -767,7 +836,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
           ),
         ),
         child: Text(
-          'Cancel',
+          AppLocalizations.of(context)!.cancel,
           style: TextStyle(
             fontSize: 16,
             color: ThemeColors.getSecondaryTextColor(context),

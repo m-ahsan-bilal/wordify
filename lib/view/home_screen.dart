@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,7 +6,6 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:word_master/core/utils/app_colors.dart';
-import 'package:word_master/core/utils/theme_provider.dart';
 import '../viewmodel/streak_vm.dart';
 import '../viewmodel/xp_vm.dart';
 import '../viewmodel/quiz_vm.dart';
@@ -14,6 +14,7 @@ import '../core/repositories/quiz_repository.dart';
 import '../core/model/word_model.dart';
 import '../core/model/quiz_model.dart';
 import 'widgets/quiz_dialog.dart';
+import '../l10n/app_localizations.dart';
 
 /// Home Screen - Uses StreakViewModel and WordRepository
 /// Follows MVVM pattern: UI talks only to ViewModels/Repositories
@@ -32,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasLoadedInitialData = false;
   final flutterTts = FlutterTts();
   List<Word> _allWords = [];
-  int _currentQuizWordIndex = 0; // Track which word to quiz next
+  final _random = Random(); // For random word selection
   @override
   void initState() {
     super.initState();
@@ -82,30 +83,30 @@ class _HomeScreenState extends State<HomeScreen> {
       final wordRepo = context.read<WordRepository>();
       final words = await wordRepo.getTodaysWords();
       final wordsCount = await wordRepo.getWordsCount();
-      
+
       // Load all words for quiz generation
       final allWordsData = await wordRepo.getAllWords();
       _allWords = allWordsData.map((w) => Word.fromMap(w)).toList();
 
-    // Sort words by dateAdded to get the most recent first
-    final sortedWords = List<Map<String, dynamic>>.from(words);
-    sortedWords.sort((a, b) {
-      final dateA = a['dateAdded'] as String?;
-      final dateB = b['dateAdded'] as String?;
+      // Sort words by dateAdded to get the most recent first
+      final sortedWords = List<Map<String, dynamic>>.from(words);
+      sortedWords.sort((a, b) {
+        final dateA = a['dateAdded'] as String?;
+        final dateB = b['dateAdded'] as String?;
 
-      if (dateA == null && dateB == null) return 0;
-      if (dateA == null) return 1;
-      if (dateB == null) return -1;
+        if (dateA == null && dateB == null) return 0;
+        if (dateA == null) return 1;
+        if (dateB == null) return -1;
 
-      try {
-        final parsedDateA = DateTime.parse(dateA);
-        final parsedDateB = DateTime.parse(dateB);
-        // Sort in descending order (most recent first)
-        return parsedDateB.compareTo(parsedDateA);
-      } catch (e) {
-        return 0;
-      }
-    });
+        try {
+          final parsedDateA = DateTime.parse(dateA);
+          final parsedDateB = DateTime.parse(dateB);
+          // Sort in descending order (most recent first)
+          return parsedDateB.compareTo(parsedDateA);
+        } catch (e) {
+          return 0;
+        }
+      });
 
       if (mounted) {
         setState(() {
@@ -124,7 +125,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load data: ${e.toString()}'),
+            content: Text(
+              '${AppLocalizations.of(context)!.failedToLoadData}: ${e.toString()}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -154,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_allWords.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('No words available for quiz'),
+          content: Text(AppLocalizations.of(context)!.noWordsAvailableForQuiz),
           backgroundColor: Colors.orange,
         ),
       );
@@ -164,55 +167,19 @@ class _HomeScreenState extends State<HomeScreen> {
     // Get words that should be quizzed (cycles through all words)
     final quizRepository = context.read<QuizRepository>();
     final wordsToQuiz = await quizRepository.getWordsToQuiz(_allWords);
-    
+
     if (wordsToQuiz.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('No words available for quiz'),
+          content: Text(AppLocalizations.of(context)!.noWordsAvailableForQuiz),
           backgroundColor: Colors.orange,
         ),
       );
       return;
     }
 
-    // Cycle through words - use modulo to wrap around
-    final word = wordsToQuiz[_currentQuizWordIndex % wordsToQuiz.length];
-    
-    // Increment index for next quiz
-    setState(() {
-      _currentQuizWordIndex = (_currentQuizWordIndex + 1) % wordsToQuiz.length;
-    });
-
-    // Check if word has required data
-    if (type == QuizType.synonym && word.synonyms.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('This word has no synonyms available'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (type == QuizType.antonym && word.antonyms.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('This word has no antonyms available'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (type == QuizType.meaning && word.meaning.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('This word has no meaning available'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
+    // Randomly select a word from the available words
+    final word = wordsToQuiz[_random.nextInt(wordsToQuiz.length)];
 
     final quizVm = context.read<QuizViewModel>();
     final question = await quizVm.generateQuestion(word, type, _allWords);
@@ -220,10 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (question == null) {
       if (quizVm.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(quizVm.error!),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(quizVm.error!), backgroundColor: Colors.red),
         );
       }
       return;
@@ -251,21 +215,21 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
-              'Exit App',
+              AppLocalizations.of(context)!.exitApp,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: ThemeColors.getTextColor(context),
               ),
             ),
             content: Text(
-              'Are you sure you want to exit Word Master?',
+              AppLocalizations.of(context)!.exitConfirm,
               style: TextStyle(color: ThemeColors.getTextColor(context)),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(
-                  'Cancel',
+                  AppLocalizations.of(context)!.cancel,
                   style: TextStyle(
                     color: ThemeColors.getSecondaryTextColor(context),
                   ),
@@ -283,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Exit'),
+                child: Text(AppLocalizations.of(context)!.exit),
               ),
             ],
           ),
@@ -309,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: ThemeColors.getBackgroundColor(context),
           elevation: 0,
           title: Text(
-            'Home ',
+            AppLocalizations.of(context)!.home,
             style: TextStyle(
               color: ThemeColors.getTextColor(context),
               fontSize: 24,
@@ -338,7 +302,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${streakVm.streak.currentStreak} day',
+                        '${streakVm.streak.currentStreak} ${AppLocalizations.of(context)!.day}',
                         style: TextStyle(
                           color: ThemeColors.getTextColor(context),
                           fontWeight: FontWeight.w600,
@@ -349,55 +313,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // More Options Button
-            Consumer<ThemeProvider>(
-              builder: (context, themeProvider, child) {
-                return PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert,
-                    color: ThemeColors.getTextColor(context),
-                  ),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'theme':
-                        themeProvider.toggleTheme();
-                        break;
-                      case 'about':
-                        context.push('/about');
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'theme',
-                      child: Row(
-                        children: [
-                          Icon(
-                            themeProvider.isDarkMode
-                                ? Icons.light_mode
-                                : Icons.dark_mode,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            themeProvider.isDarkMode
-                                ? 'Light Mode'
-                                : 'Dark Mode',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'about',
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline),
-                          SizedBox(width: 8),
-                          Text('About Word Master'),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
+            // Settings Button
+            IconButton(
+              icon: Icon(
+                Icons.settings,
+                color: ThemeColors.getTextColor(context),
+              ),
+              onPressed: () {
+                context.push('/settings');
               },
             ),
           ],
@@ -410,213 +333,296 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                // Today's Word Card with Swipe Gestures
-                GestureDetector(
-                  onVerticalDragEnd: (details) {
-                    // Swipe Up - lower threshold for better detection
-                    if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
-                      _handleSwipeQuiz(QuizType.meaning);
-                    }
-                  },
-                  onHorizontalDragEnd: (details) {
-                    // Swipe Left - lower threshold
-                    if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
-                      _handleSwipeQuiz(QuizType.synonym);
-                    }
-                    // Swipe Right - lower threshold
-                    if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
-                      _handleSwipeQuiz(QuizType.antonym);
-                    }
-                  },
-                  // Also handle drag updates for better feedback
-                  onVerticalDragUpdate: (details) {
-                    // Optional: Add visual feedback during drag
-                  },
-                  onHorizontalDragUpdate: (details) {
-                    // Optional: Add visual feedback during drag
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: ThemeColors.getCardColor(context),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Today's word",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: ThemeColors.getTextColor(context),
-                          fontWeight: FontWeight.w500,
+                    // Today's Word Card with Swipe Gestures
+                    GestureDetector(
+                      onVerticalDragEnd: (details) {
+                        // Swipe Up - lower threshold for better detection
+                        if (details.primaryVelocity != null &&
+                            details.primaryVelocity! < -300) {
+                          _handleSwipeQuiz(QuizType.meaning);
+                        }
+                      },
+                      onHorizontalDragEnd: (details) {
+                        // Swipe Left - lower threshold
+                        if (details.primaryVelocity != null &&
+                            details.primaryVelocity! < -300) {
+                          _handleSwipeQuiz(QuizType.synonym);
+                        }
+                        // Swipe Right - lower threshold
+                        if (details.primaryVelocity != null &&
+                            details.primaryVelocity! > 300) {
+                          _handleSwipeQuiz(QuizType.antonym);
+                        }
+                      },
+                      // Also handle drag updates for better feedback
+                      onVerticalDragUpdate: (details) {
+                        // Optional: Add visual feedback during drag
+                      },
+                      onHorizontalDragUpdate: (details) {
+                        // Optional: Add visual feedback during drag
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: ThemeColors.getCardColor(context),
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              AppLocalizations.of(context)!.todayWords,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: ThemeColors.getTextColor(context),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  todaysWords.isNotEmpty
-                                      ? todaysWords[0]['word'] ?? 'No word'
-                                      : 'No words today',
-                                  style: TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: ThemeColors.getTextColor(context),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        todaysWords.isNotEmpty
+                                            ? todaysWords[0]['word'] ??
+                                                  AppLocalizations.of(
+                                                    context,
+                                                  )!.word
+                                            : AppLocalizations.of(
+                                                context,
+                                              )!.noWordsToday,
+                                        style: TextStyle(
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.bold,
+                                          color: ThemeColors.getTextColor(
+                                            context,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        todaysWords.isNotEmpty
+                                            ? todaysWords[0]['meaning'] ??
+                                                  AppLocalizations.of(
+                                                    context,
+                                                  )!.meaning
+                                            : AppLocalizations.of(
+                                                context,
+                                              )!.addFirstWord,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color:
+                                              ThemeColors.getSecondaryTextColor(
+                                                context,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  todaysWords.isNotEmpty
-                                      ? todaysWords[0]['meaning'] ??
-                                            'No meaning available'
-                                      : 'You have no added words today',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: ThemeColors.getSecondaryTextColor(
-                                      context,
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: OutlinedButton.icon(
+                                    onPressed: todaysWords.isNotEmpty
+                                        ? () => _speak(
+                                            todaysWords[0]['word'] ?? '',
+                                          )
+                                        : null,
+                                    icon: const Icon(Icons.volume_up),
+                                    label: Text(
+                                      AppLocalizations.of(context)!.listen,
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: ThemeColors.getTextColor(
+                                        context,
+                                      ),
+                                      side: BorderSide(
+                                        color: ThemeColors.getBorderColor(
+                                          context,
+                                        ),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                        horizontal: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
                                   ),
                                 ),
+                                const SizedBox(width: 12),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: OutlinedButton.icon(
-                              onPressed: todaysWords.isNotEmpty
-                                  ? () => _speak(todaysWords[0]['word'] ?? '')
-                                  : null,
-                              icon: const Icon(Icons.volume_up),
-                              label: const Text('Listen'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: ThemeColors.getTextColor(
-                                  context,
-                                ),
-                                side: BorderSide(
-                                  color: ThemeColors.getBorderColor(context),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                  horizontal: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                            if (_allWords.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.swipe_up,
+                                        size: 14,
+                                        color:
+                                            ThemeColors.getSecondaryTextColor(
+                                              context,
+                                            ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '↑ ${AppLocalizations.of(context)!.meaning}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color:
+                                              ThemeColors.getSecondaryTextColor(
+                                                context,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.swipe_left,
+                                        size: 14,
+                                        color:
+                                            ThemeColors.getSecondaryTextColor(
+                                              context,
+                                            ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '← ${AppLocalizations.of(context)!.synonym}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color:
+                                              ThemeColors.getSecondaryTextColor(
+                                                context,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.swipe_right,
+                                        size: 14,
+                                        color:
+                                            ThemeColors.getSecondaryTextColor(
+                                              context,
+                                            ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '→ ${AppLocalizations.of(context)!.antonym}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color:
+                                              ThemeColors.getSecondaryTextColor(
+                                                context,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                      ),
-                      if (_allWords.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.swipe_up,
-                                  size: 14,
-                                  color: ThemeColors.getSecondaryTextColor(context),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '↑ Meaning',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: ThemeColors.getSecondaryTextColor(context),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.swipe_left,
-                                  size: 14,
-                                  color: ThemeColors.getSecondaryTextColor(context),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '← Synonym',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: ThemeColors.getSecondaryTextColor(context),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.swipe_right,
-                                  size: 14,
-                                  color: ThemeColors.getSecondaryTextColor(context),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '→ Antonym',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: ThemeColors.getSecondaryTextColor(context),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            ],
                           ],
                         ),
-                      ],
-                    ],
-                  ),
-                  ),
-                ),
+                      ),
+                    ),
 
-                const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                // Stats Cards
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: ThemeColors.getCardColor(context),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Consumer<StreakViewModel>(
-                    builder: (context, streakVm, child) {
-                      return LayoutBuilder(
-                        builder: (context, constraints) {
-                          // Use different layouts based on available width
-                          if (constraints.maxWidth < 350) {
-                            // Stack vertically on very small screens
-                            return Column(
-                              children: [
-                                _buildStatCard(
-                                  icon: Icons.local_fire_department,
-                                  value: streakVm.streak.currentStreak
-                                      .toString(),
-                                  label: 'Day streak',
-                                  isCompact: true,
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
+                    // Stats Cards
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: ThemeColors.getCardColor(context),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Consumer<StreakViewModel>(
+                        builder: (context, streakVm, child) {
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              // Use different layouts based on available width
+                              if (constraints.maxWidth < 350) {
+                                // Stack vertically on very small screens
+                                return Column(
                                   children: [
+                                    _buildStatCard(
+                                      icon: Icons.local_fire_department,
+                                      value: streakVm.streak.currentStreak
+                                          .toString(),
+                                      label: 'Day streak',
+                                      isCompact: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Consumer<XPViewModel>(
+                                            builder: (context, xpVm, child) {
+                                              return _buildStatCard(
+                                                icon: Icons.stars,
+                                                value: xpVm
+                                                    .getXPDisplayText()
+                                                    .replaceAll(' XP', ''),
+                                                label: 'XP',
+                                                isCompact: true,
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _buildStatCard(
+                                            icon: Icons.today,
+                                            value: todaysWords.length
+                                                .toString(),
+                                            label: 'Today',
+                                            isCompact: true,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              } else {
+                                // Use row layout for larger screens
+                                return Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        icon: Icons.local_fire_department,
+                                        value: streakVm.streak.currentStreak
+                                            .toString(),
+                                        label: 'Day streak',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
                                     Expanded(
                                       child: Consumer<XPViewModel>(
                                         builder: (context, xpVm, child) {
@@ -626,7 +632,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 .getXPDisplayText()
                                                 .replaceAll(' XP', ''),
                                             label: 'XP',
-                                            isCompact: true,
                                           );
                                         },
                                       ),
@@ -637,72 +642,66 @@ class _HomeScreenState extends State<HomeScreen> {
                                         icon: Icons.today,
                                         value: todaysWords.length.toString(),
                                         label: 'Today',
-                                        isCompact: true,
                                       ),
                                     ),
                                   ],
-                                ),
-                              ],
-                            );
-                          } else {
-                            // Use row layout for larger screens
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Expanded(
-                                  child: _buildStatCard(
-                                    icon: Icons.local_fire_department,
-                                    value: streakVm.streak.currentStreak
-                                        .toString(),
-                                    label: 'Day streak',
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Consumer<XPViewModel>(
-                                    builder: (context, xpVm, child) {
-                                      return _buildStatCard(
-                                        icon: Icons.stars,
-                                        value: xpVm
-                                            .getXPDisplayText()
-                                            .replaceAll(' XP', ''),
-                                        label: 'XP',
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: _buildStatCard(
-                                    icon: Icons.today,
-                                    value: todaysWords.length.toString(),
-                                    label: 'Today',
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
+                                );
+                              }
+                            },
+                          );
                         },
-                      );
-                    },
-                  ),
-                ),
+                      ),
+                    ),
 
-                const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                // Quick Actions
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth < 400) {
-                      // Stack actions vertically on small screens
-                      return Column(
-                        children: [
-                          Row(
+                    // Quick Actions
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 400) {
+                          // Stack actions vertically on small screens
+                          return Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildActionButton(
+                                      icon: Icons.add_circle_outline,
+                                      label: AppLocalizations.of(
+                                        context,
+                                      )!.addWord,
+                                      onTap: () async {
+                                        await context.push('/add-word');
+                                        // Refresh data when returning from add word screen
+                                        _refreshData();
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: _buildActionButton(
+                                  icon: Icons.access_time,
+                                  label: 'Review',
+                                  onTap: () async {
+                                    await context.push('/list');
+                                    // Refresh data when returning from word list
+                                    _refreshData();
+                                  },
+                                ),
+                              ),
+                            ],
+                          );
+                        } else {
+                          // Use row layout for larger screens
+                          return Row(
                             children: [
                               Expanded(
                                 child: _buildActionButton(
                                   icon: Icons.add_circle_outline,
-                                  label: 'Add Word',
+                                  label: AppLocalizations.of(context)!.addWord,
                                   onTap: () async {
                                     await context.push('/add-word');
                                     // Refresh data when returning from add word screen
@@ -710,75 +709,43 @@ class _HomeScreenState extends State<HomeScreen> {
                                   },
                                 ),
                               ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildActionButton(
+                                  icon: Icons.access_time,
+                                  label: 'Review',
+                                  onTap: () async {
+                                    await context.push('/list');
+                                    // Refresh data when returning from word list
+                                    _refreshData();
+                                  },
+                                ),
+                              ),
+                              // Expanded(
+                              //   child: _buildActionButton(
+                              //     icon: Icons.auto_awesome,
+                              //     label: 'Start Quiz',
+                              //     onTap: () {
+                              //       // TODO: Navigate to quiz
+                              //     },
+                              //   ),
+                              // ),
+                              // const SizedBox(width: 12),
+                              // Expanded(
+                              //   child: _buildActionButton(
+                              //     icon: Icons.access_time,
+                              //     label: 'Review',
+                              //     onTap: () => context.push('/list'),
+                              //   ),
+                              // ),
                             ],
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: _buildActionButton(
-                              icon: Icons.access_time,
-                              label: 'Review',
-                              onTap: () async {
-                                await context.push('/list');
-                                // Refresh data when returning from word list
-                                _refreshData();
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    } else {
-                      // Use row layout for larger screens
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: _buildActionButton(
-                              icon: Icons.add_circle_outline,
-                              label: 'Add Word',
-                              onTap: () async {
-                                await context.push('/add-word');
-                                // Refresh data when returning from add word screen
-                                _refreshData();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildActionButton(
-                              icon: Icons.access_time,
-                              label: 'Review',
-                              onTap: () async {
-                                await context.push('/list');
-                                // Refresh data when returning from word list
-                                _refreshData();
-                              },
-                            ),
-                          ),
-                          // Expanded(
-                          //   child: _buildActionButton(
-                          //     icon: Icons.auto_awesome,
-                          //     label: 'Start Quiz',
-                          //     onTap: () {
-                          //       // TODO: Navigate to quiz
-                          //     },
-                          //   ),
-                          // ),
-                          // const SizedBox(width: 12),
-                          // Expanded(
-                          //   child: _buildActionButton(
-                          //     icon: Icons.access_time,
-                          //     label: 'Review',
-                          //     onTap: () => context.push('/list'),
-                          //   ),
-                          // ),
-                        ],
-                      );
-                    }
-                  },
-                ),
+                          );
+                        }
+                      },
+                    ),
 
-                const SizedBox(height: 24),
-                /*
+                    const SizedBox(height: 24),
+                    /*
 
               // Today's Goal
               const Text(
@@ -818,7 +785,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Search Bar
               TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search words...',
+                  hintText: AppLocalizations.of(context)!.searchWords,
                   hintStyle: const TextStyle(color: AppColors.lightGray),
                   prefixIcon: const Icon(
                     Icons.search,
@@ -845,23 +812,23 @@ class _HomeScreenState extends State<HomeScreen> {
               // Filter Chips
               Row(
                 children: [
-                  _buildFilterChip('All', isSelected: true),
+                  _buildFilterChip(AppLocalizations.of(context)!.all, isSelected: true),
                   const SizedBox(width: 8),
-                  _buildFilterChip('New', isSelected: false),
+                  _buildFilterChip(AppLocalizations.of(context)!.newWords, isSelected: false),
                   const SizedBox(width: 8),
-                  _buildFilterChip('Mastered', isSelected: false),
+                  _buildFilterChip(AppLocalizations.of(context)!.mastered, isSelected: false),
                 ],
               ),
 
               const SizedBox(height: 16),
 
               // Your Library
-              const Text(
-                "Your Library",
+              Text(
+                AppLocalizations.of(context)!.yourLibrary,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.darkGray,
+                  color: ThemeColors.getTextColor(context),
                 ),
               ),
               const SizedBox(height: 12),
@@ -874,7 +841,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       (word) => _buildWordCard(
                         word: word['word'] ?? '',
                         definition: word['definition'] ?? '',
-                        level: 'Lv ${word['level'] ?? 1}',
+                        level: AppLocalizations.of(context)!.levelLabelWithNumber(word['level'] ?? 1),
                         lastReviewed: 'Last reviewed 2d ago',
                       ),
                     )
@@ -882,25 +849,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildWordCard(
                   word: 'Ebullient',
                   definition: 'Last reviewed 2d ago • Syn ✓ • Ant ✓',
-                  level: 'Lv 3',
+                  level: AppLocalizations.of(context)!.levelLabelWithNumber(3),
                   lastReviewed: '',
                   levelColor: AppColors.lightGreen,
                 ),
           
 
           */
-              ],
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-        // Loading overlay
-        if (isLoading)
-          Container(
-            color: Colors.black.withOpacity(0.3),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
+            // Loading overlay
+            if (isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
           ],
         ),
       ), // End of Scaffold
@@ -914,7 +879,7 @@ class _HomeScreenState extends State<HomeScreen> {
     bool isCompact = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       padding: EdgeInsets.all(isCompact ? 12 : 16),
       constraints: const BoxConstraints(minWidth: 80, maxWidth: 120),

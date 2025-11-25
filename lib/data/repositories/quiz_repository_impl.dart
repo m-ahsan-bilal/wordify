@@ -77,9 +77,7 @@ class QuizRepositoryImpl implements QuizRepository {
         options = _generateMeaningOptions(word, allWords);
         break;
       case QuizType.synonym:
-        if (word.synonyms.isEmpty) {
-          throw Exception('Word has no synonyms');
-        }
+        // Synonyms are now required, so this check is not needed
         final synonymsList = word.synonyms
             .split(',')
             .map((s) => s.trim())
@@ -90,9 +88,7 @@ class QuizRepositoryImpl implements QuizRepository {
         options = _generateSynonymOptions(word, correctAnswer, allWords);
         break;
       case QuizType.antonym:
-        if (word.antonyms.isEmpty) {
-          throw Exception('Word has no antonyms');
-        }
+        // Antonyms are now required, so this check is not needed
         final antonymsList = word.antonyms
             .split(',')
             .map((a) => a.trim())

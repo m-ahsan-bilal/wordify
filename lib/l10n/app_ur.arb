@@ -1,0 +1,231 @@
+{
+  "@@locale": "ur",
+  "appTitle": "ورڈ ماسٹر",
+  "home": "ہوم",
+  "addWord": "لفظ شامل کریں",
+  "wordList": "الفاظ کی فہرست",
+  "quiz": "کوئز",
+  "settings": "ترتیبات",
+  "about": "کے بارے میں",
+  "backupRestore": "بیک اپ اور بحالی",
+  "theme": "تھیم",
+  "language": "زبان",
+  "darkMode": "ڈارک موڈ",
+  "lightMode": "لائٹ موڈ",
+  "english": "انگریزی",
+  "urdu": "اردو",
+  "hindi": "ہندی",
+  "arabic": "عربی",
+  "streak": "سلسلہ",
+  "xp": "تجربہ",
+  "todayWords": "آج کے الفاظ",
+  "word": "لفظ",
+  "meaning": "معنی",
+  "synonym": "مترادف",
+  "antonym": "متضاد",
+  "example": "مثال",
+  "save": "محفوظ کریں",
+  "cancel": "منسوخ کریں",
+  "delete": "حذف کریں",
+  "edit": "ترمیم",
+  "search": "تلاش",
+  "noWordsFound": "کوئی الفاظ نہیں ملے",
+  "addYourFirstWord": "اپنا پہلا لفظ شامل کریں",
+  "swipeUpForMeaning": "معنی کوئز کے لیے اوپر سوائپ کریں",
+  "swipeLeftForSynonym": "مترادف کوئز کے لیے بائیں سوائپ کریں",
+  "swipeRightForAntonym": "متضاد کوئز کے لیے دائیں سوائپ کریں",
+  "day": "دن",
+  "days": "دن",
+  "exitApp": "ایپ سے باہر نکلیں",
+  "exitConfirm": "کیا آپ واقعی ورڈ ماسٹر سے باہر نکلنا چاہتے ہیں؟",
+  "exit": "باہر نکلیں",
+  "wordAdded": "لفظ شامل کیا گیا!",
+  "xpEarned": "تجربہ حاصل کیا",
+  "levelUp": "لیول اپ!",
+  "enterWord": "لفظ درج کریں",
+  "enterMeaning": "معنی درج کریں",
+  "enterSynonyms": "مترادفات درج کریں (کاما سے الگ)",
+  "enterAntonyms": "متضادات درج کریں (کاما سے الگ)",
+  "enterExample": "مثال جملہ درج کریں",
+  "selectSource": "ماخذ منتخب کریں",
+  "yourLibrary": "آپ کی لائبریری",
+  "all": "سب",
+  "newWords": "نیا",
+  "mastered": "ماہر",
+  "searchWords": "الفاظ تلاش کریں...",
+  "noWordsToday": "آج کوئی الفاظ شامل نہیں کیے گئے",
+  "addFirstWord": "شروع کرنے کے لیے اپنا پہلا لفظ شامل کریں!",
+  "correct": "درست!",
+  "incorrect": "غلط",
+  "theAnswerIs": "جواب ہے",
+  "restore": "بحال کریں",
+  "restoreConfirm": "یہ تمام موجودہ ڈیٹا کو بیک اپ سے تبدیل کر دے گا۔ اس عمل کو واپس نہیں کیا جا سکتا۔",
+  "restoreBackup": "بیک اپ بحال کریں؟",
+  "backupCreated": "بیک اپ کامیابی سے بنایا گیا",
+  "backupRestored": "بیک اپ کامیابی سے بحال کیا گیا",
+  "googleDriveBackup": "Google Drive بیک اپ",
+  "dataStoredSecurely": "ڈیٹا آپ کے Google Drive میں \"Word Master Backups\" فولڈر کے تحت محفوظ طریقے سے محفوظ کیا جاتا ہے۔",
+  "signInToGoogle": "Google میں سائن ان کریں",
+  "signInDescription": "بیک اپ اور بحالی کی فعالیت کو فعال کرنے کے لیے اپنے Google اکاؤنٹ سے سائن ان کریں۔",
+  "signInWithGoogle": "Google کے ساتھ سائن ان کریں",
+  "signedIn": "سائن ان کیا گیا",
+  "signOut": "سائن آؤٹ کریں",
+  "backupFound": "Google Drive میں بیک اپ ملا",
+  "createBackup": "بیک اپ بنائیں",
+  "tryAdjustingSearch": "اپنی تلاش یا فلٹرز کو ایڈجسٹ کرنے کی کوشش کریں",
+  "startAddingWords": "اپنی لائبریری بنانے کے لیے الفاظ شامل کرنا شروع کریں",
+  "levelLabel": "Lv",
+  "synLabel": "Syn",
+  "antLabel": "Ant",
+  "levelLabelWithNumber": "Lv {level}",
+  "@levelLabelWithNumber": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "synCount": "Syn {count}",
+  "@synCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "antCount": "Ant {count}",
+  "@antCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addNewWord": "نیا لفظ شامل کریں",
+  "enterTheNewWord": "نیا لفظ درج کریں",
+  "pleaseEnterAWord": "براہ کرم ایک لفظ درج کریں",
+  "autoFocus": "خود کار فوکس",
+  "wordAddedSuccess": "لفظ شامل کیا گیا!",
+  "failedToAddWord": "لفظ شامل کرنے میں ناکام",
+  "clearForm": "فارم صاف کریں",
+  "listen": "سنو",
+  "dayStreak": "دن کا سلسلہ",
+  "today": "آج",
+  "review": "جائزہ",
+  "noWordsAvailableForQuiz": "کوئز کے لیے کوئی الفاظ دستیاب نہیں",
+  "thisWordHasNoSynonyms": "اس لفظ کے مترادفات دستیاب نہیں ہیں",
+  "thisWordHasNoAntonyms": "اس لفظ کے متضادات دستیاب نہیں ہیں",
+  "thisWordHasNoMeaning": "اس لفظ کا معنی دستیاب نہیں ہے",
+  "failedToLoadData": "ڈیٹا لوڈ کرنے میں ناکام",
+  "wordUpdatedSuccessfully": "لفظ کامیابی سے اپ ڈیٹ ہو گیا!",
+  "failedToSaveChanges": "تبدیلیاں محفوظ کرنے میں ناکام",
+  "deleteWord": "لفظ حذف کریں",
+  "deleteWordConfirm": "کیا آپ واقعی اس لفظ کو حذف کرنا چاہتے ہیں؟",
+  "wordDeleted": "لفظ حذف کر دیا گیا!",
+  "failedToDeleteWord": "لفظ حذف کرنے میں ناکام",
+  "editWord": "لفظ میں ترمیم کریں",
+  "saveChanges": "تبدیلیاں محفوظ کریں",
+  "source": "ماخذ",
+  "book": "کتاب",
+  "article": "مضمون",
+  "youtube": "YouTube",
+  "conversation": "بات چیت",
+  "other": "دیگر",
+  "quizCompleted": "کوئز مکمل",
+  "youScored": "آپ نے اسکور کیا",
+  "outOf": "میں سے",
+  "done": "ہو گیا",
+  "noMeaningAvailable": "کوئی معنی دستیاب نہیں",
+  "youHaveNoAddedWordsToday": "آج آپ نے کوئی الفاظ شامل نہیں کیے",
+  "meanings": "معانی",
+  "meaningsHint": "ایک غیر متوقع دریافت",
+  "synonymsHint": "خوش قسمت، موقع",
+  "antonymsHint": "منصوبہ بندی، ارادی",
+  "sentenceHint": "اس لفظ کو اپنے جملے میں استعمال کریں",
+  "sourceHint": "آپ نے یہ لفظ کہاں سے سیکھا؟",
+  "addWordSuccess": "لفظ شامل کیا گیا! +{xp} XP حاصل کیا۔",
+  "@addWordSuccess": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "addWordLevelUp": "لفظ شامل کیا گیا! +{xp} XP حاصل کیا۔ 🎉 لیول اپ!",
+  "@addWordLevelUp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "synonyms": "مترادفات",
+  "antonyms": "متضادات",
+  "useInSentence": "جملے میں استعمال کریں",
+  "makeItPersonal": "اسے ذاتی بنائیں",
+  "whereDidYouLearnThisWord": "آپ نے یہ لفظ کہاں سے سیکھا؟ (ماخذ)",
+  "chooseSource": "ماخذ منتخب کریں",
+  "saveWord": "لفظ محفوظ کریں",
+  "loading": "لوڈ ہو رہا ہے...",
+  "noMeaningProvided": "کوئی معنی فراہم نہیں کیا گیا",
+  "noSynonymsAdded": "کوئی مترادفات شامل نہیں کیے گئے",
+  "noAntonymsAdded": "کوئی متضادات شامل نہیں کیے گئے",
+  "noSourceSpecified": "کوئی ماخذ متعین نہیں کیا گیا",
+  "wordStatistics": "لفظ کے اعداد و شمار",
+  "xpEarnedStat": "XP حاصل کیا",
+  "levelStat": "لیول",
+  "completeness": "مکمل",
+  "thisFieldIsRequired": "یہ فیلڈ ضروری ہے",
+  "pleaseEnterTheMeaning": "براہ کرم معنی درج کریں",
+  "whatIsTheMeaningOf": "\"{word}\" کا معنی کیا ہے؟",
+  "@whatIsTheMeaningOf": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "meaningQuiz": "📖 معنی کوئز",
+  "synonymQuiz": "🔗 مترادف کوئز",
+  "antonymQuiz": "⚡ متضاد کوئز",
+  "correctAnswer": "درست جواب: {answer}",
+  "@correctAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "xpEarnedFormat": "+{xp} XP",
+  "@xpEarnedFormat": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "levelUpMessage": "لیول اپ! 🎉",
+  "enterTheWord": "لفظ درج کریں",
+  "enterTheMeaning": "معنی درج کریں",
+  "enterSynonymsComma": "مترادفات درج کریں (کاما سے الگ)",
+  "enterAntonymsComma": "متضادات درج کریں (کاما سے الگ)",
+  "whereDidYouLearnThisWordShort": "آپ نے یہ لفظ کہاں سے سیکھا؟",
+  "exampleSentence": "مثال جملہ",
+  "noExampleSentenceProvided": "کوئی مثال جملہ فراہم نہیں کیا گیا",
+  "editWordTooltip": "ترمیم",
+  "cancelTooltip": "منسوخ کریں",
+  "listenTooltip": "سنو",
+  "quizTitle": "کوئز {current}/{total}",
+  "@quizTitle": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "seconds": "s"
+}
+

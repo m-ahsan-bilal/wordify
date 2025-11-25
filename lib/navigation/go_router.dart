@@ -7,6 +7,8 @@ import '../view/home_screen.dart';
 import '../view/quiz_screen.dart';
 import '../view/word_details_screen.dart';
 import '../view/word_list.dart';
+import '../view/backup_screen.dart';
+import '../view/settings_screen.dart';
 
 /// App Router - Handles all navigation
 /// Uses GoRouter for declarative routing
@@ -49,6 +51,14 @@ class AppRouter {
         GoRoute(
           path: '/about',
           builder: (_, __) => const AboutScreen(),
+        ),
+        GoRoute(
+          path: '/backup',
+          builder: (_, __) => const BackupScreen(),
+        ),
+        GoRoute(
+          path: '/settings',
+          builder: (_, __) => const SettingsScreen(),
         ),
       ],
     );

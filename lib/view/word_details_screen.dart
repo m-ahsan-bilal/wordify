@@ -6,6 +6,7 @@ import '../core/model/word_model.dart';
 import '../core/repositories/word_repository.dart';
 import '../core/utils/app_colors.dart';
 import '../viewmodel/add_word_vm.dart';
+import '../l10n/app_localizations.dart';
 
 /// Word Details Screen - Uses AddWordViewModel for updates/deletes
 /// Follows MVVM pattern: UI talks only to ViewModels
@@ -123,11 +124,11 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
       HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Word updated successfully!'),
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(AppLocalizations.of(context)!.wordUpdatedSuccessfully),
             ],
           ),
           backgroundColor: Colors.green,
@@ -146,7 +147,10 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
               const Icon(Icons.error, color: Colors.white),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(viewModel.error ?? 'Failed to save changes'),
+                child: Text(
+                  viewModel.error ??
+                      AppLocalizations.of(context)!.failedToSaveChanges,
+                ),
               ),
             ],
           ),
@@ -165,16 +169,19 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Word'),
-        content: const Text('Are you sure you want to delete this word?'),
+        title: Text(AppLocalizations.of(context)!.deleteWord),
+        content: Text(AppLocalizations.of(context)!.deleteWordConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(
+              AppLocalizations.of(context)!.delete,
+              style: const TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -188,13 +195,17 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Word deleted!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.wordDeleted)),
+      );
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(viewModel.error ?? 'Failed to delete word')),
+        SnackBar(
+          content: Text(
+            viewModel.error ?? AppLocalizations.of(context)!.failedToDeleteWord,
+          ),
+        ),
       );
     }
   }
@@ -215,7 +226,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
-            'Loading...',
+            AppLocalizations.of(context)!.loading,
             style: TextStyle(
               color: ThemeColors.getTextColor(context),
               fontSize: 20,
@@ -246,7 +257,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          isEditing ? 'Edit Word' : wordData['word'] ?? '',
+          isEditing
+              ? AppLocalizations.of(context)!.editWord
+              : wordData['word'] ?? '',
           style: TextStyle(
             color: ThemeColors.getTextColor(context),
             fontSize: 20,
@@ -261,12 +274,12 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                 color: ThemeColors.getTextColor(context),
               ),
               onPressed: () => _speak(wordData['word'] ?? ''),
-              tooltip: 'Listen',
+              tooltip: AppLocalizations.of(context)!.listenTooltip,
             ),
             IconButton(
               icon: Icon(Icons.edit, color: ThemeColors.getTextColor(context)),
               onPressed: _toggleEdit,
-              tooltip: 'Edit',
+              tooltip: AppLocalizations.of(context)!.editWordTooltip,
             ),
           ] else ...[
             IconButton(
@@ -281,7 +294,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                 _sentenceController.text = wordData['sentence'] ?? '';
                 _sourceController.text = wordData['source'] ?? '';
               },
-              tooltip: 'Cancel',
+              tooltip: AppLocalizations.of(context)!.cancelTooltip,
             ),
           ],
         ],
@@ -381,7 +394,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => _speak(word.word),
                   icon: const Icon(Icons.volume_up),
-                  label: const Text('Listen'),
+                  label: Text(AppLocalizations.of(context)!.listen),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: ThemeColors.getTextColor(context),
                     side: BorderSide(
@@ -413,7 +426,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Meaning',
+            AppLocalizations.of(context)!.meaning,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -422,7 +435,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            word.meaning.isNotEmpty ? word.meaning : 'No meaning provided',
+            word.meaning.isNotEmpty
+                ? word.meaning
+                : AppLocalizations.of(context)!.noMeaningProvided,
             style: TextStyle(
               fontSize: 14,
               color: word.meaning.isNotEmpty
@@ -449,7 +464,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         children: [
           // Synonyms Section
           Text(
-            'Synonyms',
+            AppLocalizations.of(context)!.synonyms,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -491,7 +506,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
             )
           else
             Text(
-              'No synonyms added',
+              AppLocalizations.of(context)!.noSynonymsAdded,
               style: TextStyle(
                 fontSize: 14,
                 color: ThemeColors.getSecondaryTextColor(context),
@@ -502,7 +517,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
 
           // Antonyms Section
           Text(
-            'Antonyms',
+            AppLocalizations.of(context)!.antonyms,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -538,7 +553,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
             )
           else
             Text(
-              'No antonyms added',
+              AppLocalizations.of(context)!.noAntonymsAdded,
               style: TextStyle(
                 fontSize: 14,
                 color: ThemeColors.getSecondaryTextColor(context),
@@ -561,7 +576,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Example Sentence',
+            AppLocalizations.of(context)!.exampleSentence,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -578,7 +593,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
             child: Text(
               word.sentence.isNotEmpty
                   ? '"${word.sentence}"'
-                  : 'No example sentence provided',
+                  : AppLocalizations.of(context)!.noExampleSentenceProvided,
               style: TextStyle(
                 fontSize: 14,
                 color: word.sentence.isNotEmpty
@@ -608,7 +623,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Source',
+            AppLocalizations.of(context)!.source,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -625,7 +640,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                word.source.isNotEmpty ? word.source : 'No source specified',
+                word.source.isNotEmpty
+                    ? word.source
+                    : AppLocalizations.of(context)!.noSourceSpecified,
                 style: TextStyle(
                   fontSize: 14,
                   color: word.source.isNotEmpty
@@ -652,7 +669,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Word Statistics',
+            AppLocalizations.of(context)!.wordStatistics,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -664,7 +681,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
             children: [
               Expanded(
                 child: _buildStatItem(
-                  'XP Earned',
+                  AppLocalizations.of(context)!.xpEarnedStat,
                   '${word.xp}',
                   Icons.stars,
                   ThemeColors.getPrimaryColor(context),
@@ -672,7 +689,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
               ),
               Expanded(
                 child: _buildStatItem(
-                  'Level',
+                  AppLocalizations.of(context)!.levelStat,
                   '${word.level}',
                   Icons.trending_up,
                   ThemeColors.getPrimaryColor(context),
@@ -680,7 +697,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
               ),
               Expanded(
                 child: _buildStatItem(
-                  'Completeness',
+                  AppLocalizations.of(context)!.completeness,
                   '${_getCompletenessPercentage(word)}%',
                   Icons.check_circle,
                   Colors.green,
@@ -731,7 +748,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           child: OutlinedButton.icon(
             onPressed: _toggleEdit,
             icon: const Icon(Icons.edit),
-            label: const Text('Edit Word'),
+            label: Text(AppLocalizations.of(context)!.editWord),
             style: OutlinedButton.styleFrom(
               foregroundColor: ThemeColors.getTextColor(context),
               side: BorderSide(color: ThemeColors.getBorderColor(context)),
@@ -747,7 +764,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           child: OutlinedButton.icon(
             onPressed: _deleteWord,
             icon: const Icon(Icons.delete),
-            label: const Text('Delete'),
+            label: Text(AppLocalizations.of(context)!.delete),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.red,
               side: const BorderSide(color: Colors.red),
@@ -770,9 +787,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           color: Colors.green,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Text(
-          'Mastered',
-          style: TextStyle(
+        child: Text(
+          AppLocalizations.of(context)!.mastered,
+          style: const TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -804,7 +821,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         border: Border.all(color: levelColor.withOpacity(0.3)),
       ),
       child: Text(
-        'Lv ${word.level}',
+        AppLocalizations.of(context)!.levelLabelWithNumber(word.level),
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w600,
@@ -820,22 +837,22 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
       children: [
         // Word Input
         _buildEditSection(
-          'Word',
+          AppLocalizations.of(context)!.word,
           _wordController,
           _wordFocus,
           _meaningFocus,
-          'Enter the word',
+          AppLocalizations.of(context)!.enterTheWord,
           isRequired: true,
         ),
         const SizedBox(height: 16),
 
         // Meaning Input
         _buildEditSection(
-          'Meaning',
+          AppLocalizations.of(context)!.meaning,
           _meaningController,
           _meaningFocus,
           _synonymsFocus,
-          'Enter the meaning',
+          AppLocalizations.of(context)!.enterTheMeaning,
           maxLines: 3,
           isRequired: true,
         ),
@@ -843,42 +860,42 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
 
         // Synonyms Input
         _buildEditSection(
-          'Synonyms',
+          AppLocalizations.of(context)!.synonyms,
           _synonymsController,
           _synonymsFocus,
           _antonymsFocus,
-          'Enter synonyms (comma separated)',
+          AppLocalizations.of(context)!.enterSynonymsComma,
         ),
         const SizedBox(height: 16),
 
         // Antonyms Input
         _buildEditSection(
-          'Antonyms',
+          AppLocalizations.of(context)!.antonyms,
           _antonymsController,
           _antonymsFocus,
           _sentenceFocus,
-          'Enter antonyms (comma separated)',
+          AppLocalizations.of(context)!.enterAntonymsComma,
         ),
         const SizedBox(height: 16),
 
         // Sentence Input
         _buildEditSection(
-          'Example Sentence',
+          AppLocalizations.of(context)!.exampleSentence,
           _sentenceController,
           _sentenceFocus,
           null,
-          'Use this word in your own sentence',
+          AppLocalizations.of(context)!.sentenceHint,
           maxLines: 3,
         ),
         const SizedBox(height: 16),
 
         // Source Input
         _buildEditSection(
-          'Source',
+          AppLocalizations.of(context)!.source,
           _sourceController,
           null,
           null,
-          'Where did you learn this word?',
+          AppLocalizations.of(context)!.whereDidYouLearnThisWordShort,
         ),
         const SizedBox(height: 32),
 
@@ -905,7 +922,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(context)!.cancel),
               ),
             ),
             const SizedBox(width: 12),
@@ -920,7 +937,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Save Changes'),
+                child: Text(AppLocalizations.of(context)!.saveChanges),
               ),
             ),
           ],
@@ -1003,7 +1020,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
             ),
             validator: isRequired
                 ? (v) => v == null || v.trim().isEmpty
-                      ? 'This field is required'
+                      ? AppLocalizations.of(context)!.thisFieldIsRequired
                       : null
                 : null,
           ),

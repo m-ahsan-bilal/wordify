@@ -1,0 +1,231 @@
+{
+  "@@locale": "ar",
+  "appTitle": "سيد الكلمات",
+  "home": "الرئيسية",
+  "addWord": "إضافة كلمة",
+  "wordList": "قائمة الكلمات",
+  "quiz": "اختبار",
+  "settings": "الإعدادات",
+  "about": "حول",
+  "backupRestore": "النسخ الاحتياطي والاستعادة",
+  "theme": "المظهر",
+  "language": "اللغة",
+  "darkMode": "الوضع الداكن",
+  "lightMode": "الوضع الفاتح",
+  "english": "الإنجليزية",
+  "urdu": "الأردية",
+  "hindi": "الهندية",
+  "arabic": "العربية",
+  "streak": "السلسلة",
+  "xp": "النقاط",
+  "todayWords": "كلمات اليوم",
+  "word": "كلمة",
+  "meaning": "المعنى",
+  "synonym": "مرادف",
+  "antonym": "ضد",
+  "example": "مثال",
+  "save": "حفظ",
+  "cancel": "إلغاء",
+  "delete": "حذف",
+  "edit": "تعديل",
+  "search": "بحث",
+  "noWordsFound": "لم يتم العثور على كلمات",
+  "addYourFirstWord": "أضف كلمتك الأولى",
+  "swipeUpForMeaning": "اسحب لأعلى لاختبار المعنى",
+  "swipeLeftForSynonym": "اسحب لليسار لاختبار المرادف",
+  "swipeRightForAntonym": "اسحب لليمين لاختبار الضد",
+  "day": "يوم",
+  "days": "أيام",
+  "exitApp": "خروج من التطبيق",
+  "exitConfirm": "هل أنت متأكد أنك تريد الخروج من سيد الكلمات؟",
+  "exit": "خروج",
+  "wordAdded": "تمت إضافة الكلمة!",
+  "xpEarned": "نقاط خبرة مكتسبة",
+  "levelUp": "ترقية المستوى!",
+  "enterWord": "أدخل كلمة",
+  "enterMeaning": "أدخل المعنى",
+  "enterSynonyms": "أدخل المرادفات (مفصولة بفواصل)",
+  "enterAntonyms": "أدخل الأضداد (مفصولة بفواصل)",
+  "enterExample": "أدخل جملة مثال",
+  "selectSource": "اختر المصدر",
+  "yourLibrary": "مكتبتك",
+  "all": "الكل",
+  "newWords": "جديد",
+  "mastered": "متقن",
+  "searchWords": "ابحث عن كلمات...",
+  "noWordsToday": "لم تتم إضافة كلمات اليوم",
+  "addFirstWord": "أضف كلمتك الأولى للبدء!",
+  "correct": "صحيح!",
+  "incorrect": "غير صحيح",
+  "theAnswerIs": "الإجابة هي",
+  "restore": "استعادة",
+  "restoreConfirm": "سيؤدي هذا إلى استبدال جميع البيانات الحالية بالنسخة الاحتياطية. لا يمكن التراجع عن هذا الإجراء.",
+  "restoreBackup": "استعادة النسخة الاحتياطية؟",
+  "backupCreated": "تم إنشاء النسخة الاحتياطية بنجاح",
+  "backupRestored": "تمت استعادة النسخة الاحتياطية بنجاح",
+  "googleDriveBackup": "نسخة احتياطية على Google Drive",
+  "dataStoredSecurely": "يتم تخزين البيانات بأمان في Google Drive الخاص بك في مجلد \"Word Master Backups\".",
+  "signInToGoogle": "تسجيل الدخول إلى Google",
+  "signInDescription": "قم بتسجيل الدخول باستخدام حساب Google الخاص بك لتمكين وظائف النسخ الاحتياطي والاستعادة.",
+  "signInWithGoogle": "تسجيل الدخول باستخدام Google",
+  "signedIn": "تم تسجيل الدخول",
+  "signOut": "تسجيل الخروج",
+  "backupFound": "تم العثور على نسخة احتياطية في Google Drive",
+  "createBackup": "إنشاء نسخة احتياطية",
+  "tryAdjustingSearch": "حاول تعديل البحث أو المرشحات",
+  "startAddingWords": "ابدأ بإضافة الكلمات لبناء مكتبتك",
+  "levelLabel": "Lv",
+  "synLabel": "Syn",
+  "antLabel": "Ant",
+  "levelLabelWithNumber": "Lv {level}",
+  "@levelLabelWithNumber": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "synCount": "Syn {count}",
+  "@synCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "antCount": "Ant {count}",
+  "@antCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addNewWord": "إضافة كلمة جديدة",
+  "enterTheNewWord": "أدخل الكلمة الجديدة",
+  "pleaseEnterAWord": "الرجاء إدخال كلمة",
+  "autoFocus": "التركيز التلقائي",
+  "wordAddedSuccess": "تمت إضافة الكلمة!",
+  "failedToAddWord": "فشل في إضافة الكلمة",
+  "clearForm": "مسح النموذج",
+  "listen": "استمع",
+  "dayStreak": "سلسلة الأيام",
+  "today": "اليوم",
+  "review": "مراجعة",
+  "noWordsAvailableForQuiz": "لا توجد كلمات متاحة للاختبار",
+  "thisWordHasNoSynonyms": "هذه الكلمة ليس لها مرادفات متاحة",
+  "thisWordHasNoAntonyms": "هذه الكلمة ليس لها أضداد متاحة",
+  "thisWordHasNoMeaning": "هذه الكلمة ليس لها معنى متاح",
+  "failedToLoadData": "فشل في تحميل البيانات",
+  "wordUpdatedSuccessfully": "تم تحديث الكلمة بنجاح!",
+  "failedToSaveChanges": "فشل في حفظ التغييرات",
+  "deleteWord": "حذف الكلمة",
+  "deleteWordConfirm": "هل أنت متأكد أنك تريد حذف هذه الكلمة؟",
+  "wordDeleted": "تم حذف الكلمة!",
+  "failedToDeleteWord": "فشل في حذف الكلمة",
+  "editWord": "تعديل الكلمة",
+  "saveChanges": "حفظ التغييرات",
+  "source": "المصدر",
+  "book": "كتاب",
+  "article": "مقال",
+  "youtube": "YouTube",
+  "conversation": "محادثة",
+  "other": "أخرى",
+  "quizCompleted": "اكتمل الاختبار",
+  "youScored": "لقد سجلت",
+  "outOf": "من أصل",
+  "done": "تم",
+  "noMeaningAvailable": "لا يوجد معنى متاح",
+  "youHaveNoAddedWordsToday": "لم تقم بإضافة أي كلمات اليوم",
+  "meanings": "المعاني",
+  "meaningsHint": "اكتشاف غير متوقع",
+  "synonymsHint": "محظوظ، فرصة",
+  "antonymsHint": "مخطط، مقصود",
+  "sentenceHint": "استخدم هذه الكلمة في جملتك الخاصة",
+  "sourceHint": "أين تعلمت هذه الكلمة؟",
+  "addWordSuccess": "تمت إضافة الكلمة! +{xp} XP مكتسب.",
+  "@addWordSuccess": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "addWordLevelUp": "تمت إضافة الكلمة! +{xp} XP مكتسب. 🎉 ترقية المستوى!",
+  "@addWordLevelUp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "synonyms": "المرادفات",
+  "antonyms": "الأضداد",
+  "useInSentence": "استخدم في جملة",
+  "makeItPersonal": "اجعله شخصياً",
+  "whereDidYouLearnThisWord": "أين تعلمت هذه الكلمة؟ (المصدر)",
+  "chooseSource": "اختر المصدر",
+  "saveWord": "حفظ الكلمة",
+  "loading": "جاري التحميل...",
+  "noMeaningProvided": "لم يتم توفير معنى",
+  "noSynonymsAdded": "لم تتم إضافة مرادفات",
+  "noAntonymsAdded": "لم تتم إضافة أضداد",
+  "noSourceSpecified": "لم يتم تحديد مصدر",
+  "wordStatistics": "إحصائيات الكلمة",
+  "xpEarnedStat": "XP المكتسب",
+  "levelStat": "المستوى",
+  "completeness": "الاكتمال",
+  "thisFieldIsRequired": "هذا الحقل مطلوب",
+  "pleaseEnterTheMeaning": "الرجاء إدخال المعنى",
+  "whatIsTheMeaningOf": "ما معنى \"{word}\"؟",
+  "@whatIsTheMeaningOf": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "meaningQuiz": "📖 اختبار المعنى",
+  "synonymQuiz": "🔗 اختبار المرادف",
+  "antonymQuiz": "⚡ اختبار الضد",
+  "correctAnswer": "الإجابة الصحيحة: {answer}",
+  "@correctAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "xpEarnedFormat": "+{xp} XP",
+  "@xpEarnedFormat": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "levelUpMessage": "ترقية المستوى! 🎉",
+  "enterTheWord": "أدخل الكلمة",
+  "enterTheMeaning": "أدخل المعنى",
+  "enterSynonymsComma": "أدخل المرادفات (مفصولة بفواصل)",
+  "enterAntonymsComma": "أدخل الأضداد (مفصولة بفواصل)",
+  "whereDidYouLearnThisWordShort": "أين تعلمت هذه الكلمة؟",
+  "exampleSentence": "جملة مثال",
+  "noExampleSentenceProvided": "لم يتم توفير جملة مثال",
+  "editWordTooltip": "تعديل",
+  "cancelTooltip": "إلغاء",
+  "listenTooltip": "استمع",
+  "quizTitle": "اختبار {current}/{total}",
+  "@quizTitle": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "seconds": "s"
+}
+

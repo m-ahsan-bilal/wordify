@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import '../../core/model/xp_model.dart';
 import '../../core/repositories/xp_repository.dart';
 import '../datasources/local/xp_local_datasource.dart';

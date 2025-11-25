@@ -1,0 +1,249 @@
+{
+  "@@locale": "en",
+  "appTitle": "Word Master",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "home": "Home",
+  "addWord": "Add Word",
+  "wordList": "Word List",
+  "quiz": "Quiz",
+  "settings": "Settings",
+  "about": "About",
+  "backupRestore": "Backup & Restore",
+  "theme": "Theme",
+  "language": "Language",
+  "darkMode": "Dark Mode",
+  "lightMode": "Light Mode",
+  "english": "English",
+  "urdu": "Urdu",
+  "hindi": "Hindi",
+  "arabic": "Arabic",
+  "streak": "Streak",
+  "xp": "XP",
+  "todayWords": "Today's Words",
+  "word": "Word",
+  "meaning": "Meaning",
+  "synonym": "Synonym",
+  "antonym": "Antonym",
+  "example": "Example",
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "search": "Search",
+  "noWordsFound": "No words found",
+  "addYourFirstWord": "Add your first word",
+  "swipeUpForMeaning": "Swipe up for meaning quiz",
+  "swipeLeftForSynonym": "Swipe left for synonym quiz",
+  "swipeRightForAntonym": "Swipe right for antonym quiz",
+  "day": "day",
+  "days": "days",
+  "exitApp": "Exit App",
+  "exitConfirm": "Are you sure you want to exit Word Master?",
+  "exit": "Exit",
+  "wordAdded": "Word added!",
+  "xpEarned": "XP earned",
+  "levelUp": "LEVEL UP!",
+  "enterWord": "Enter word",
+  "enterMeaning": "Enter meaning",
+  "enterSynonyms": "Enter synonyms (comma separated)",
+  "enterAntonyms": "Enter antonyms (comma separated)",
+  "enterExample": "Enter example sentence",
+  "selectSource": "Select source",
+  "yourLibrary": "Your Library",
+  "all": "All",
+  "newWords": "New",
+  "mastered": "Mastered",
+  "searchWords": "Search words...",
+  "noWordsToday": "No words added today",
+  "addFirstWord": "Add your first word to get started!",
+  "correct": "Correct!",
+  "incorrect": "Incorrect",
+  "theAnswerIs": "The answer is",
+  "restore": "Restore",
+  "restoreConfirm": "This will replace all current data with the backup. This action cannot be undone.",
+  "restoreBackup": "Restore Backup?",
+  "backupCreated": "Backup created successfully",
+  "backupRestored": "Backup restored successfully",
+  "googleDriveBackup": "Google Drive backup",
+  "dataStoredSecurely": "Data is stored securely in your Google Drive under \"Word Master Backups\" folder.",
+  "signInToGoogle": "Sign in to Google",
+  "signInDescription": "Sign in with your Google account to enable backup and restore functionality.",
+  "signInWithGoogle": "Sign in with Google",
+  "signedIn": "Signed in",
+  "signOut": "Sign Out",
+  "backupFound": "Backup found in Google Drive",
+  "createBackup": "Create Backup",
+  "addNewWord": "Add New Word",
+  "enterTheNewWord": "Enter the new word",
+  "pleaseEnterAWord": "Please enter a word",
+  "autoFocus": "Auto-focus",
+  "wordAddedSuccess": "Word added!",
+  "failedToAddWord": "Failed to add word",
+  "clearForm": "Clear form",
+  "listen": "Listen",
+  "dayStreak": "Day streak",
+  "today": "Today",
+  "review": "Review",
+  "noWordsAvailableForQuiz": "No words available for quiz",
+  "thisWordHasNoSynonyms": "This word has no synonyms available",
+  "thisWordHasNoAntonyms": "This word has no antonyms available",
+  "thisWordHasNoMeaning": "This word has no meaning available",
+  "failedToLoadData": "Failed to load data",
+  "wordUpdatedSuccessfully": "Word updated successfully!",
+  "failedToSaveChanges": "Failed to save changes",
+  "deleteWord": "Delete Word",
+  "deleteWordConfirm": "Are you sure you want to delete this word?",
+  "wordDeleted": "Word deleted!",
+  "failedToDeleteWord": "Failed to delete word",
+  "editWord": "Edit Word",
+  "saveChanges": "Save Changes",
+  "source": "Source",
+  "book": "Book",
+  "article": "Article",
+  "youtube": "YouTube",
+  "conversation": "Conversation",
+  "other": "Other",
+  "quizCompleted": "Quiz Completed",
+  "youScored": "You scored",
+  "outOf": "out of",
+  "done": "Done",
+  "noMeaningAvailable": "No meaning available",
+  "youHaveNoAddedWordsToday": "You have no added words today",
+  "meanings": "Meanings",
+  "meaningsHint": "An unexpected discovery",
+  "synonymsHint": "Fortunate, chance",
+  "antonymsHint": "Planned, intentional",
+  "sentenceHint": "Use this word in your own sentence",
+  "sourceHint": "Where did you learn this word?",
+  "addWordSuccess": "Word added! +{xp} XP earned.",
+  "@addWordSuccess": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "addWordLevelUp": "Word added! +{xp} XP earned. 🎉 LEVEL UP!",
+  "@addWordLevelUp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "synonyms": "Synonyms",
+  "antonyms": "Antonyms",
+  "useInSentence": "Use in a Sentence",
+  "makeItPersonal": "Make it personal",
+  "whereDidYouLearnThisWord": "Where did you learn this word? (Source)",
+  "chooseSource": "Choose source",
+  "saveWord": "Save Word",
+  "loading": "Loading...",
+  "noMeaningProvided": "No meaning provided",
+  "noSynonymsAdded": "No synonyms added",
+  "noAntonymsAdded": "No antonyms added",
+  "noSourceSpecified": "No source specified",
+  "wordStatistics": "Word Statistics",
+  "xpEarnedStat": "XP Earned",
+  "levelStat": "Level",
+  "completeness": "Completeness",
+  "thisFieldIsRequired": "This field is required",
+  "pleaseEnterTheMeaning": "Please enter the meaning",
+  "whatIsTheMeaningOf": "What is the meaning of \"{word}\"?",
+  "@whatIsTheMeaningOf": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "meaningQuiz": "📖 Meaning Quiz",
+  "synonymQuiz": "🔗 Synonym Quiz",
+  "antonymQuiz": "⚡ Antonym Quiz",
+  "correctAnswer": "Correct answer: {answer}",
+  "@correctAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "xpEarnedFormat": "+{xp} XP",
+  "@xpEarnedFormat": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "levelUpMessage": "Level Up! 🎉",
+  "aboutWordMaster": "About Word Master",
+  "version": "Version 1.0.0",
+  "aboutTheApp": "About the App",
+  "aboutTheAppContent": "Word Master is your ultimate vocabulary companion designed to help you expand your word knowledge effortlessly. Whether you're a student preparing for exams, a professional looking to enhance your communication skills, or simply someone who loves learning new words, Word Master provides the perfect platform to build and maintain your vocabulary.",
+  "keyFeatures": "Key Features",
+  "keyFeaturesContent": "• Add and organize your vocabulary words\n• Track your learning progress with XP system\n• Maintain daily learning streaks\n• Review words with interactive quizzes\n• Listen to word pronunciations\n• Categorize words by difficulty levels\n• Dark and light theme support\n• Offline functionality with cloud sync",
+  "ourMission": "Our Mission",
+  "ourMissionContent": "We believe that a rich vocabulary is the foundation of effective communication. Our mission is to make vocabulary learning engaging, systematic, and rewarding. Through gamification elements like XP points, streaks, and levels, we transform the traditional approach to vocabulary building into an enjoyable journey of discovery.",
+  "contactUs": "Contact Us",
+  "contactUsContent": "We'd love to hear from you! Whether you have feedback, suggestions, or need support, feel free to reach out to us.\n\nEmail: support@wordmaster.com\nWebsite: www.wordmaster.com\nFollow us on social media for updates and tips!",
+  "credits": "Credits",
+  "creditsContent": "Word Master is developed with ❤️ using Flutter framework. Special thanks to all the developers for making this app possible.\n\nIcons by Material Design Icons\nFonts by Google Fonts\nBuilt with Flutter & Dart",
+  "copyright": "© 2024 Word Master",
+  "madeWithLove": "Made with 💜 for vocabulary enthusiasts",
+  "backupDescription": "Backup your vocabulary data to Google Drive and restore it on any device. Your words, progress, streaks, and quiz history will be safely stored in the cloud.",
+  "tryAdjustingSearch": "Try adjusting your search or filters",
+  "startAddingWords": "Start adding words to build your library",
+  "synCount": "Syn {count}",
+  "@synCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "antCount": "Ant {count}",
+  "@antCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "quizTitle": "Quiz {current}/{total}",
+  "@quizTitle": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "enterTheWord": "Enter the word",
+  "enterTheMeaning": "Enter the meaning",
+  "enterSynonymsComma": "Enter synonyms (comma separated)",
+  "enterAntonymsComma": "Enter antonyms (comma separated)",
+  "whereDidYouLearnThisWordShort": "Where did you learn this word?",
+  "exampleSentence": "Example Sentence",
+  "noExampleSentenceProvided": "No example sentence provided",
+  "editWordTooltip": "Edit",
+  "cancelTooltip": "Cancel",
+  "listenTooltip": "Listen",
+  "levelLabel": "Lv",
+  "synLabel": "Syn",
+  "antLabel": "Ant",
+  "levelLabelWithNumber": "Lv {level}",
+  "@levelLabelWithNumber": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "seconds": "s"
+}
+

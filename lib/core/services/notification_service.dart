@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:hive/hive.dart';
 
 /// Notification Service - Handles Firebase Cloud Messaging
 /// Singleton pattern for global access
@@ -23,18 +24,28 @@ class NotificationService {
 
   /// Initialize notification service
   Future<void> init() async {
-    if (_initialized) return;
+    if (_initialized) {
+      debugPrint('Notification service already initialized');
+      return;
+    }
 
     try {
+      debugPrint('Initializing notification service...');
       _initialized = true;
 
       // Request notification permissions (Android 13+, iOS)
       try {
-        await _messaging.requestPermission(
+        final settings = await _messaging.requestPermission(
           alert: true,
           badge: true,
           sound: true,
           provisional: false,
+        );
+        debugPrint(
+          'Notification permission status: ${settings.authorizationStatus}',
+        );
+        debugPrint(
+          'Alert: ${settings.alert}, Badge: ${settings.badge}, Sound: ${settings.sound}',
         );
       } catch (e) {
         debugPrint('Permission request error: $e');
@@ -78,15 +89,39 @@ class NotificationService {
       // Get FCM token (required for topic subscriptions)
       try {
         _fcmToken = await _messaging.getToken();
-        if (_fcmToken != null) {
-          debugPrint('FCM Token: $_fcmToken');
+        if (_fcmToken != null && _fcmToken!.isNotEmpty) {
+          debugPrint(
+            '✅ FCM Token obtained: ${_fcmToken!.substring(0, _fcmToken!.length > 20 ? 20 : _fcmToken!.length)}...',
+          );
         } else {
-          debugPrint('FCM Token is null');
+          debugPrint('❌ FCM Token is null - retrying...');
+          // Retry after a delay
+          await Future.delayed(const Duration(seconds: 2));
+          _fcmToken = await _messaging.getToken();
+          if (_fcmToken != null && _fcmToken!.isNotEmpty) {
+            debugPrint(
+              '✅ FCM Token obtained on retry: ${_fcmToken!.substring(0, _fcmToken!.length > 20 ? 20 : _fcmToken!.length)}...',
+            );
+          } else {
+            debugPrint('❌ FCM Token still null after retry');
+          }
         }
       } catch (e) {
         debugPrint('FCM token error: $e');
         // Token generation is important for subscriptions, but continue
       }
+
+      // Listen for token refresh
+      _messaging.onTokenRefresh.listen((newToken) {
+        if (newToken.isNotEmpty) {
+          debugPrint(
+            'FCM Token refreshed: ${newToken.substring(0, newToken.length > 20 ? 20 : newToken.length)}...',
+          );
+          _fcmToken = newToken;
+        }
+      });
+
+      debugPrint('✅ Notification service initialized successfully');
     } catch (e, stackTrace) {
       debugPrint('Notification service init error: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -99,10 +134,12 @@ class NotificationService {
   /// Handle foreground FCM message
   /// Shows notification when app is in foreground
   void _handleForegroundMessage(RemoteMessage message) {
-    debugPrint('Received foreground message: ${message.messageId}');
+    debugPrint('📬 Received foreground message: ${message.messageId}');
     debugPrint('Title: ${message.notification?.title}');
     debugPrint('Body: ${message.notification?.body}');
     debugPrint('Data: ${message.data}');
+    debugPrint('From: ${message.from}');
+    debugPrint('Sent time: ${message.sentTime}');
 
     // Note: FCM handles showing notifications automatically on Android
     // when app is in background. In foreground, you can handle it here
@@ -131,21 +168,23 @@ class NotificationService {
     try {
       // Ensure we have FCM token before subscribing
       if (_fcmToken == null) {
-        debugPrint('Waiting for FCM token before subscribing to $topic...');
+        debugPrint('⏳ Waiting for FCM token before subscribing to $topic...');
         _fcmToken = await _messaging.getToken();
         if (_fcmToken == null) {
-          debugPrint('FCM token still null, cannot subscribe to $topic');
+          debugPrint('❌ FCM token still null, cannot subscribe to $topic');
           return;
         }
+        debugPrint('✅ FCM token obtained for topic subscription');
       }
 
       // Wait a bit to ensure Firebase Messaging is ready
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 1000));
 
       await _messaging.subscribeToTopic(topic);
-      debugPrint('Successfully subscribed to topic: $topic');
-    } catch (e) {
-      debugPrint('Failed to subscribe to topic $topic: $e');
+      debugPrint('✅ Successfully subscribed to topic: $topic');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Failed to subscribe to topic $topic: $e');
+      debugPrint('Stack trace: $stackTrace');
       // Don't rethrow - allow app to continue, subscription can retry later
     }
   }
@@ -198,17 +237,46 @@ class NotificationService {
 
   /// Subscribe to daily reminders topic
   /// Your backend will send notifications to this topic at scheduled times
-  Future<void> enableDailyReminders() async {
+  Future<void> enableDailyReminders({bool checkSettings = true}) async {
     if (!_initialized) {
       debugPrint(
-        'Notification service not initialized, cannot enable daily reminders',
+        '❌ Notification service not initialized, cannot enable daily reminders',
       );
-      return;
+      // Try to initialize first
+      try {
+        await init();
+      } catch (e) {
+        debugPrint('Failed to initialize notification service: $e');
+        return;
+      }
     }
+
+    // Check if notifications are enabled in settings (if checkSettings is true)
+    if (checkSettings) {
+      try {
+        final settingsBox = await Hive.openBox('settings');
+        final notificationsEnabled = settingsBox.get(
+          'notificationsEnabled',
+          defaultValue: true,
+        );
+        if (!notificationsEnabled) {
+          debugPrint(
+            '⏸️ Notifications are disabled in settings, skipping subscription',
+          );
+          return;
+        }
+      } catch (e) {
+        debugPrint('Could not check notification settings: $e');
+        // Continue anyway
+      }
+    }
+
     try {
+      debugPrint('📅 Enabling daily reminders...');
       await subscribeToTopic('daily_reminders');
+      debugPrint('✅ Daily reminders enabled');
     } catch (e) {
-      debugPrint('Failed to enable daily reminders: $e');
+      debugPrint('❌ Failed to enable daily reminders: $e');
       // Don't rethrow - allow app to continue
     }
   }
@@ -245,5 +313,37 @@ class NotificationService {
     } catch (e) {
       debugPrint('Failed to disable streak alerts: $e');
     }
+  }
+
+  /// Verify FCM is working properly
+  Future<Map<String, dynamic>> verifyFCMStatus() async {
+    final status = <String, dynamic>{
+      'initialized': _initialized,
+      'hasToken': _fcmToken != null,
+      'token': _fcmToken != null ? '${_fcmToken!.substring(0, 20)}...' : null,
+    };
+
+    try {
+      final permission = await _messaging.requestPermission();
+      status['permissionStatus'] = permission.authorizationStatus.toString();
+      status['permissionGranted'] =
+          permission.authorizationStatus == AuthorizationStatus.authorized;
+    } catch (e) {
+      status['permissionError'] = e.toString();
+    }
+
+    try {
+      final token = await _messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        status['currentToken'] = token.toString();
+      } else {
+        status['currentToken'] = null;
+      }
+    } catch (e) {
+      status['tokenError'] = e.toString();
+    }
+
+    debugPrint('FCM Status: $status');
+    return status;
   }
 }

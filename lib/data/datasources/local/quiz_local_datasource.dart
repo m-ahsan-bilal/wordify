@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../core/model/quiz_model.dart';
 
@@ -54,4 +53,3 @@ class QuizLocalDatasource {
     await _quizResultsBox.clear();
   }
 }
-

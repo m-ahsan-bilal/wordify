@@ -5,6 +5,7 @@ import 'package:word_master/viewmodel/words_list_vm.dart';
 import 'package:word_master/core/utils/app_colors.dart';
 import 'package:word_master/core/model/word_model.dart';
 import 'package:go_router/go_router.dart';
+import '../l10n/app_localizations.dart';
 
 class WordsListScreen extends StatefulWidget {
   const WordsListScreen({super.key});
@@ -15,8 +16,13 @@ class WordsListScreen extends StatefulWidget {
 
 class _WordsListScreenState extends State<WordsListScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedFilter = 'All';
+  String _selectedFilter = 'all'; // Internal key, not displayed
   String _searchQuery = '';
+
+  // Filter keys for internal use
+  static const String _filterAll = 'all';
+  static const String _filterNew = 'new';
+  static const String _filterMastered = 'mastered';
 
   @override
   void initState() {
@@ -53,33 +59,27 @@ class _WordsListScreenState extends State<WordsListScreen> {
     }
 
     // Apply category filter
-    switch (_selectedFilter) {
-      case 'New':
-        // Filter words added in last 7 days
-        final weekAgo = DateTime.now().subtract(const Duration(days: 7));
-        allWords = allWords.where((word) {
-          final dateStr = word['dateAdded']?.toString();
-          if (dateStr == null) return false;
-          try {
-            final date = DateTime.parse(dateStr);
-            return date.isAfter(weekAgo);
-          } catch (e) {
-            return false;
-          }
-        }).toList();
-        break;
-      case 'Mastered':
-        // For now, randomly mark some as mastered (you can implement actual mastery logic)
-        allWords = allWords.where((word) {
-          final wordText = word['word']?.toString() ?? '';
-          return wordText.length > 8; // Simple logic for demo
-        }).toList();
-        break;
-      case 'All':
-      default:
-        // No additional filtering
-        break;
+    if (_selectedFilter == _filterNew) {
+      // Filter words added in last 7 days
+      final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+      allWords = allWords.where((word) {
+        final dateStr = word['dateAdded']?.toString();
+        if (dateStr == null) return false;
+        try {
+          final date = DateTime.parse(dateStr);
+          return date.isAfter(weekAgo);
+        } catch (e) {
+          return false;
+        }
+      }).toList();
+    } else if (_selectedFilter == _filterMastered) {
+      // For now, randomly mark some as mastered (you can implement actual mastery logic)
+      allWords = allWords.where((word) {
+        final wordText = word['word']?.toString() ?? '';
+        return wordText.length > 8; // Simple logic for demo
+      }).toList();
     }
+    // else: 'all' - no additional filtering
 
     // Sort by date (newest first)
     allWords.sort((a, b) {
@@ -117,7 +117,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Your Library',
+          AppLocalizations.of(context)!.yourLibrary,
           style: TextStyle(
             color: ThemeColors.getTextColor(context),
             fontSize: 20,
@@ -177,7 +177,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Search words...',
+                hintText: AppLocalizations.of(context)!.searchWords,
                 hintStyle: TextStyle(
                   color: ThemeColors.getSecondaryTextColor(
                     context,
@@ -211,11 +211,11 @@ class _WordsListScreenState extends State<WordsListScreen> {
           // Filter Chips
           Row(
             children: [
-              _buildFilterChip('All'),
+              _buildFilterChip(AppLocalizations.of(context)!.all),
               const SizedBox(width: 8),
-              _buildFilterChip('New'),
+              _buildFilterChip(AppLocalizations.of(context)!.newWords),
               const SizedBox(width: 8),
-              _buildFilterChip('Mastered'),
+              _buildFilterChip(AppLocalizations.of(context)!.mastered),
             ],
           ),
         ],
@@ -224,11 +224,25 @@ class _WordsListScreenState extends State<WordsListScreen> {
   }
 
   Widget _buildFilterChip(String label) {
-    final isSelected = _selectedFilter == label;
+    // Map localized label to internal filter key
+    String filterKey = _filterAll;
+    if (label == AppLocalizations.of(context)!.newWords) {
+      filterKey = _filterNew;
+    } else if (label == AppLocalizations.of(context)!.mastered) {
+      filterKey = _filterMastered;
+    }
+    final isSelected = _selectedFilter == filterKey;
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedFilter = label;
+          // Map localized label to internal filter key
+          if (label == AppLocalizations.of(context)!.newWords) {
+            _selectedFilter = _filterNew;
+          } else if (label == AppLocalizations.of(context)!.mastered) {
+            _selectedFilter = _filterMastered;
+          } else {
+            _selectedFilter = _filterAll;
+          }
         });
         HapticFeedback.selectionClick();
       },
@@ -346,7 +360,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Syn $synCount',
+                            AppLocalizations.of(context)!.synCount(synCount),
                             style: TextStyle(
                               fontSize: 10,
                               color: ThemeColors.getSecondaryTextColor(context),
@@ -372,7 +386,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Ant $antCount',
+                            AppLocalizations.of(context)!.antCount(antCount),
                             style: TextStyle(
                               fontSize: 10,
                               color: ThemeColors.getSecondaryTextColor(context),
@@ -405,9 +419,9 @@ class _WordsListScreenState extends State<WordsListScreen> {
           color: Colors.green,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Text(
-          'Mastered',
-          style: TextStyle(
+        child: Text(
+          AppLocalizations.of(context)!.mastered,
+          style: const TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -439,7 +453,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
         border: Border.all(color: levelColor.withOpacity(0.3)),
       ),
       child: Text(
-        'Lv $level',
+        AppLocalizations.of(context)!.levelLabelWithNumber(level),
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w600,
@@ -461,7 +475,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            "No words found",
+            AppLocalizations.of(context)!.noWordsFound,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -471,8 +485,8 @@ class _WordsListScreenState extends State<WordsListScreen> {
           const SizedBox(height: 8),
           Text(
             _searchQuery.isNotEmpty
-                ? "Try adjusting your search or filters"
-                : "Start adding words to build your library",
+                ? AppLocalizations.of(context)!.tryAdjustingSearch
+                : AppLocalizations.of(context)!.startAddingWords,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,

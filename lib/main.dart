@@ -10,6 +10,8 @@ import 'dart:ui';
 // Core Services
 import 'core/services/notification_service.dart';
 import 'core/utils/theme_provider.dart';
+import 'core/utils/language_provider.dart';
+import 'l10n/app_localizations.dart';
 
 // Data Sources
 import 'data/datasources/local/words_local_datasource.dart';
@@ -35,14 +37,19 @@ import 'viewmodel/streak_vm.dart';
 import 'viewmodel/xp_vm.dart';
 import 'viewmodel/quiz_vm.dart';
 import 'viewmodel/settings_vm.dart';
+import 'viewmodel/backup_vm.dart';
 
 // Navigation
 import 'navigation/go_router.dart';
 
 /// Firebase background message handler
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint('Background message: ${message.messageId}');
+  debugPrint('📬 Background message received: ${message.messageId}');
+  debugPrint('Title: ${message.notification?.title}');
+  debugPrint('Body: ${message.notification?.body}');
+  debugPrint('Data: ${message.data}');
 }
 
 void main() async {
@@ -156,42 +163,74 @@ void main() async {
     // Wait a bit for Firebase Messaging to be fully ready
     await Future.delayed(const Duration(milliseconds: 1000));
 
-    // Note: Topic subscriptions are optional and can be enabled later
-    // Subscribe to topics asynchronously (non-blocking) with longer timeout
-    // This allows app to start even if subscriptions take time
-    notificationService
-        .enableDailyReminders()
-        .timeout(
-          const Duration(seconds: 15),
-          onTimeout: () {
-            debugPrint('Daily reminders subscription timeout (non-blocking)');
-          },
-        )
-        .catchError((e) {
-          debugPrint('Failed to enable daily reminders: $e');
-        });
+    // Check if notifications are enabled in settings before subscribing
+    try {
+      final settingsBox = await Hive.openBox('settings');
+      final notificationsEnabled = settingsBox.get('notificationsEnabled', defaultValue: true);
+      
+      if (notificationsEnabled) {
+        debugPrint('✅ Notifications are enabled, subscribing to topics...');
+        // Note: Topic subscriptions are optional and can be enabled later
+        // Subscribe to topics asynchronously (non-blocking) with longer timeout
+        // This allows app to start even if subscriptions take time
+        notificationService
+            .enableDailyReminders(checkSettings: false) // Already checked above
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                debugPrint('⏱️ Daily reminders subscription timeout (non-blocking)');
+              },
+            )
+            .catchError((e) {
+              debugPrint('❌ Failed to enable daily reminders: $e');
+            });
 
-    notificationService
-        .enableStreakAlerts()
-        .timeout(
-          const Duration(seconds: 15),
-          onTimeout: () {
-            debugPrint('Streak alerts subscription timeout (non-blocking)');
-          },
-        )
-        .catchError((e) {
-          debugPrint('Failed to enable streak alerts: $e');
-        });
+        notificationService
+            .enableStreakAlerts()
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                debugPrint('⏱️ Streak alerts subscription timeout (non-blocking)');
+              },
+            )
+            .catchError((e) {
+              debugPrint('❌ Failed to enable streak alerts: $e');
+            });
+      } else {
+        debugPrint('⏸️ Notifications are disabled in settings, skipping topic subscriptions');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Could not check notification settings, subscribing anyway: $e');
+      // Subscribe anyway if we can't check settings
+      notificationService
+          .enableDailyReminders(checkSettings: false)
+          .catchError((e) {
+            debugPrint('❌ Failed to enable daily reminders: $e');
+          });
+      notificationService
+          .enableStreakAlerts()
+          .catchError((e) {
+            debugPrint('❌ Failed to enable streak alerts: $e');
+          });
+    }
   } catch (e) {
-    debugPrint('Notification service init error: $e');
+    debugPrint('❌ Notification service init error: $e');
     // Continue app initialization even if notifications fail
     // Try to subscribe anyway (might work if Firebase is partially initialized)
-    notificationService.enableDailyReminders().catchError((e) {
-      debugPrint('Failed to enable daily reminders after init error: $e');
+    notificationService.enableDailyReminders(checkSettings: false).catchError((e) {
+      debugPrint('❌ Failed to enable daily reminders after init error: $e');
     });
     notificationService.enableStreakAlerts().catchError((e) {
-      debugPrint('Failed to enable streak alerts after init error: $e');
+      debugPrint('❌ Failed to enable streak alerts after init error: $e');
     });
+  }
+  
+  // Verify FCM status after initialization
+  try {
+    final status = await notificationService.verifyFCMStatus();
+    debugPrint('📊 FCM Status Check: $status');
+  } catch (e) {
+    debugPrint('⚠️ Could not verify FCM status: $e');
   }
 
   // ============================================================
@@ -231,6 +270,8 @@ void main() async {
       providers: [
         // Theme Provider
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        // Language Provider
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
         // Repositories (for direct access if needed)
         Provider<WordRepository>.value(value: wordRepository),
         Provider<StreakRepository>.value(value: streakRepository),
@@ -264,6 +305,7 @@ void main() async {
           ),
         ),
         ChangeNotifierProvider(create: (_) => SettingsViewModel()),
+        ChangeNotifierProvider(create: (_) => BackupViewModel()),
       ],
       child: VocabApp(router: router),
     ),
@@ -277,8 +319,8 @@ class VocabApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
+    return Consumer2<ThemeProvider, LanguageProvider>(
+      builder: (context, themeProvider, languageProvider, child) {
         return MaterialApp.router(
           title: 'Word Master',
           debugShowCheckedModeBanner: false,
@@ -287,6 +329,9 @@ class VocabApp extends StatelessWidget {
           themeMode: themeProvider.isDarkMode
               ? ThemeMode.dark
               : ThemeMode.light,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: languageProvider.locale,
           routerConfig: router,
         );
       },
