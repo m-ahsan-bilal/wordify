@@ -166,8 +166,11 @@ void main() async {
     // Check if notifications are enabled in settings before subscribing
     try {
       final settingsBox = await Hive.openBox('settings');
-      final notificationsEnabled = settingsBox.get('notificationsEnabled', defaultValue: true);
-      
+      final notificationsEnabled = settingsBox.get(
+        'notificationsEnabled',
+        defaultValue: true,
+      );
+
       if (notificationsEnabled) {
         debugPrint('✅ Notifications are enabled, subscribing to topics...');
         // Note: Topic subscriptions are optional and can be enabled later
@@ -178,7 +181,9 @@ void main() async {
             .timeout(
               const Duration(seconds: 15),
               onTimeout: () {
-                debugPrint('⏱️ Daily reminders subscription timeout (non-blocking)');
+                debugPrint(
+                  '⏱️ Daily reminders subscription timeout (non-blocking)',
+                );
               },
             )
             .catchError((e) {
@@ -190,41 +195,47 @@ void main() async {
             .timeout(
               const Duration(seconds: 15),
               onTimeout: () {
-                debugPrint('⏱️ Streak alerts subscription timeout (non-blocking)');
+                debugPrint(
+                  '⏱️ Streak alerts subscription timeout (non-blocking)',
+                );
               },
             )
             .catchError((e) {
               debugPrint('❌ Failed to enable streak alerts: $e');
             });
       } else {
-        debugPrint('⏸️ Notifications are disabled in settings, skipping topic subscriptions');
+        debugPrint(
+          '⏸️ Notifications are disabled in settings, skipping topic subscriptions',
+        );
       }
     } catch (e) {
-      debugPrint('⚠️ Could not check notification settings, subscribing anyway: $e');
+      debugPrint(
+        '⚠️ Could not check notification settings, subscribing anyway: $e',
+      );
       // Subscribe anyway if we can't check settings
-      notificationService
-          .enableDailyReminders(checkSettings: false)
-          .catchError((e) {
-            debugPrint('❌ Failed to enable daily reminders: $e');
-          });
-      notificationService
-          .enableStreakAlerts()
-          .catchError((e) {
-            debugPrint('❌ Failed to enable streak alerts: $e');
-          });
+      notificationService.enableDailyReminders(checkSettings: false).catchError(
+        (e) {
+          debugPrint('❌ Failed to enable daily reminders: $e');
+        },
+      );
+      notificationService.enableStreakAlerts().catchError((e) {
+        debugPrint('❌ Failed to enable streak alerts: $e');
+      });
     }
   } catch (e) {
     debugPrint('❌ Notification service init error: $e');
     // Continue app initialization even if notifications fail
     // Try to subscribe anyway (might work if Firebase is partially initialized)
-    notificationService.enableDailyReminders(checkSettings: false).catchError((e) {
+    notificationService.enableDailyReminders(checkSettings: false).catchError((
+      e,
+    ) {
       debugPrint('❌ Failed to enable daily reminders after init error: $e');
     });
     notificationService.enableStreakAlerts().catchError((e) {
       debugPrint('❌ Failed to enable streak alerts after init error: $e');
     });
   }
-  
+
   // Verify FCM status after initialization
   try {
     final status = await notificationService.verifyFCMStatus();

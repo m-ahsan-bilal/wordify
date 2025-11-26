@@ -320,8 +320,6 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                     const SizedBox(height: 16),
                     _buildSourceCard(word),
                     const SizedBox(height: 16),
-                    _buildStatsCard(word),
-                    const SizedBox(height: 16),
                     _buildActionButtons(),
                   ] else ...[
                     // Edit Mode - Form
@@ -657,90 +655,6 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
     );
   }
 
-  Widget _buildStatsCard(Word word) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: ThemeColors.getCardColor(context),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppLocalizations.of(context)!.wordStatistics,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: ThemeColors.getTextColor(context),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  AppLocalizations.of(context)!.xpEarnedStat,
-                  '${word.xp}',
-                  Icons.stars,
-                  ThemeColors.getPrimaryColor(context),
-                ),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  AppLocalizations.of(context)!.levelStat,
-                  '${word.level}',
-                  Icons.trending_up,
-                  ThemeColors.getPrimaryColor(context),
-                ),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  AppLocalizations.of(context)!.completeness,
-                  '${_getCompletenessPercentage(word)}%',
-                  Icons.check_circle,
-                  Colors.green,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: ThemeColors.getTextColor(context),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: ThemeColors.getSecondaryTextColor(context),
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
   Widget _buildActionButtons() {
     return Row(
       children: [
@@ -1043,18 +957,5 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
       default:
         return Icons.source;
     }
-  }
-
-  int _getCompletenessPercentage(Word word) {
-    int filledFields = 0;
-    int totalFields = 5; // word, meaning, synonyms, antonyms, sentence
-
-    if (word.word.isNotEmpty) filledFields++;
-    if (word.meaning.isNotEmpty) filledFields++;
-    if (word.synonyms.isNotEmpty) filledFields++;
-    if (word.antonyms.isNotEmpty) filledFields++;
-    if (word.sentence.isNotEmpty) filledFields++;
-
-    return ((filledFields / totalFields) * 100).round();
   }
 }

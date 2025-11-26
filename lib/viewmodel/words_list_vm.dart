@@ -182,6 +182,42 @@ class WordsListViewModel extends ChangeNotifier {
     return word.reviewStatusText;
   }
 
+  /// Get all words sorted by time (most recent first)
+  /// This combines all words from today, yesterday, and older words
+  List<Map<String, dynamic>> getAllWordsSortedByTime() {
+    List<Map<String, dynamic>> allWords = [];
+    
+    // Add today's words
+    allWords.addAll(todaysWords);
+    
+    // Add yesterday's words
+    allWords.addAll(yesterdaysWords);
+    
+    // Add older words
+    olderWords.values.forEach((words) => allWords.addAll(words));
+    
+    // Sort by dateAdded (most recent first)
+    allWords.sort((a, b) {
+      final dateA = a['dateAdded']?.toString();
+      final dateB = b['dateAdded']?.toString();
+      
+      if (dateA == null && dateB == null) return 0;
+      if (dateA == null) return 1;
+      if (dateB == null) return -1;
+      
+      try {
+        final parsedDateA = DateTime.parse(dateA);
+        final parsedDateB = DateTime.parse(dateB);
+        // Sort in descending order (most recent first)
+        return parsedDateB.compareTo(parsedDateA);
+      } catch (e) {
+        return 0;
+      }
+    });
+    
+    return allWords;
+  }
+
   /// Safely notify listeners (avoids build-phase issues)
   void _safeNotify() {
     if (!hasListeners) return;

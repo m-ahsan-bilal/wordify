@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,15 +8,14 @@ import 'package:word_master/core/utils/app_colors.dart';
 import '../viewmodel/streak_vm.dart';
 import '../viewmodel/xp_vm.dart';
 import '../viewmodel/quiz_vm.dart';
-import '../core/repositories/word_repository.dart';
-import '../core/repositories/quiz_repository.dart';
+import '../viewmodel/words_list_vm.dart';
 import '../core/model/word_model.dart';
 import '../core/model/quiz_model.dart';
 import 'widgets/quiz_dialog.dart';
 import '../l10n/app_localizations.dart';
 
-/// Home Screen - Uses StreakViewModel and WordRepository
-/// Follows MVVM pattern: UI talks only to ViewModels/Repositories
+/// Home Screen - Uses StreakViewModel, XPViewModel, QuizViewModel, and WordsListViewModel
+/// Follows MVVM pattern: UI talks only to ViewModels
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -25,32 +23,42 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Map<String, dynamic>> todaysWords = [];
   int streak = 0;
   int totalWordsCount = 0;
   bool isLoading = false;
-  bool _hasLoadedInitialData = false;
   final flutterTts = FlutterTts();
   List<Word> _allWords = [];
-  final _random = Random(); // For random word selection
+
+  // Card stack state
+  List<Map<String, dynamic>> _wordStack = [];
+  int _currentCardIndex = 0;
+  late AnimationController _cardAnimationController;
   @override
   void initState() {
     super.initState();
+    _cardAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
   }
 
   @override
+  void dispose() {
+    _cardAnimationController.dispose();
+    super.dispose();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Only refresh if we've loaded initial data (to avoid duplicate loads)
-    if (_hasLoadedInitialData) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _refreshData();
-      });
-    }
+    // Removed automatic refresh to prevent infinite loops
+    // Data will be refreshed when explicitly needed (pull to refresh, etc.)
   }
 
   /// Refresh data without showing loading state (for background updates)
@@ -80,45 +88,42 @@ class _HomeScreenState extends State<HomeScreen> {
       final xpVm = context.read<XPViewModel>();
       await xpVm.loadXP();
 
-      final wordRepo = context.read<WordRepository>();
-      final words = await wordRepo.getTodaysWords();
-      final wordsCount = await wordRepo.getWordsCount();
+      // Use WordsListViewModel to get all words sorted by time
+      final wordsListVm = context.read<WordsListViewModel>();
+      await wordsListVm.loadWords();
+
+      // Get all words sorted by time (most recent first)
+      final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
 
       // Load all words for quiz generation
-      final allWordsData = await wordRepo.getAllWords();
-      _allWords = allWordsData.map((w) => Word.fromMap(w)).toList();
-
-      // Sort words by dateAdded to get the most recent first
-      final sortedWords = List<Map<String, dynamic>>.from(words);
-      sortedWords.sort((a, b) {
-        final dateA = a['dateAdded'] as String?;
-        final dateB = b['dateAdded'] as String?;
-
-        if (dateA == null && dateB == null) return 0;
-        if (dateA == null) return 1;
-        if (dateB == null) return -1;
-
-        try {
-          final parsedDateA = DateTime.parse(dateA);
-          final parsedDateB = DateTime.parse(dateB);
-          // Sort in descending order (most recent first)
-          return parsedDateB.compareTo(parsedDateA);
-        } catch (e) {
-          return 0;
-        }
-      });
+      _allWords = allWordsSorted.map((w) => Word.fromMap(w)).toList();
 
       if (mounted) {
+        // Check if words actually changed before updating
+        final wordsChanged =
+            _wordStack.length != allWordsSorted.length ||
+            _wordStack.isEmpty ||
+            !_areWordStacksEqual(_wordStack, allWordsSorted);
+
         setState(() {
-          todaysWords = sortedWords;
-          totalWordsCount = wordsCount;
-          _hasLoadedInitialData = true;
+          todaysWords = allWordsSorted; // Keep for compatibility
+          totalWordsCount = allWordsSorted.length;
+
+          // Always update word stack and reset to first card on refresh
+          _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
+          _currentCardIndex = 0; // Reset to first card when data is refreshed
         });
-        // Debug: Print loaded words with their timestamps
-        debugPrint(
-          'Loaded ${sortedWords.length} words today (latest first): ${sortedWords.map((w) => '${w['word']} (${w['dateAdded']})').join(', ')}',
-        );
-        debugPrint('Total words count: $wordsCount');
+
+        // Debug: Print loaded words with their timestamps (only when changed)
+        if (wordsChanged) {
+          debugPrint(
+            'Loaded ${allWordsSorted.length} words (latest first): ${allWordsSorted.take(5).map((w) => '${w['word']} (${w['dateAdded']})').join(', ')}',
+          );
+          debugPrint('Total words count: ${allWordsSorted.length}');
+          debugPrint(
+            'Word stack initialized with ${_wordStack.length} words, current index: $_currentCardIndex',
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error loading data: $e');
@@ -136,7 +141,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           isLoading = false;
-          _hasLoadedInitialData = true;
         });
       }
     }
@@ -164,11 +168,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Get words that should be quizzed (cycles through all words)
-    final quizRepository = context.read<QuizRepository>();
-    final wordsToQuiz = await quizRepository.getWordsToQuiz(_allWords);
-
-    if (wordsToQuiz.isEmpty) {
+    // Get current word from card stack
+    if (_wordStack.isEmpty || _currentCardIndex >= _wordStack.length) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.noWordsAvailableForQuiz),
@@ -178,11 +179,15 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Randomly select a word from the available words
-    final word = wordsToQuiz[_random.nextInt(wordsToQuiz.length)];
+    final currentWordData = _wordStack[_currentCardIndex];
+    final currentWord = Word.fromMap(currentWordData);
 
     final quizVm = context.read<QuizViewModel>();
-    final question = await quizVm.generateQuestion(word, type, _allWords);
+    final question = await quizVm.generateQuestion(
+      currentWord,
+      type,
+      _allWords,
+    );
 
     if (question == null) {
       if (quizVm.error != null) {
@@ -205,6 +210,64 @@ class _HomeScreenState extends State<HomeScreen> {
       final xpVm = context.read<XPViewModel>();
       await xpVm.loadXP();
     }
+  }
+
+  /// Move to next card (swipe down)
+  void _moveToNextCard() {
+    if (_wordStack.isEmpty) return;
+
+    if (_currentCardIndex < _wordStack.length - 1) {
+      // Move to next word in the list
+      setState(() {
+        _currentCardIndex++;
+      });
+      _cardAnimationController.forward(from: 0.0);
+      debugPrint(
+        'Moved to next card. Index: $_currentCardIndex, Word: ${_wordStack[_currentCardIndex]['word']}',
+      );
+    } else if (_currentCardIndex == _wordStack.length - 1) {
+      // Move past the last card to show "no more words"
+      setState(() {
+        _currentCardIndex++;
+      });
+      _cardAnimationController.forward(from: 0.0);
+      debugPrint('Reached end of word stack');
+    }
+  }
+
+  /// Check if two word stacks are equal
+  bool _areWordStacksEqual(
+    List<Map<String, dynamic>> stack1,
+    List<Map<String, dynamic>> stack2,
+  ) {
+    if (stack1.length != stack2.length) return false;
+    for (int i = 0; i < stack1.length; i++) {
+      final word1 = stack1[i]['word']?.toString() ?? '';
+      final word2 = stack2[i]['word']?.toString() ?? '';
+      if (word1 != word2) return false;
+    }
+    return true;
+  }
+
+  /// Refresh cards to show most recent words
+  Future<void> _refreshCards() async {
+    // Reload words from ViewModel
+    final wordsListVm = context.read<WordsListViewModel>();
+    await wordsListVm.loadWords();
+
+    // Get updated words
+    final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
+
+    // Also update _allWords for quiz generation
+    _allWords = allWordsSorted.map((w) => Word.fromMap(w)).toList();
+
+    setState(() {
+      _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
+      _currentCardIndex = 0; // Reset to first card
+      todaysWords = allWordsSorted; // Update for compatibility
+      totalWordsCount = allWordsSorted.length;
+    });
+    _cardAnimationController.forward(from: 0.0);
   }
 
   Future<bool> _onWillPop() async {
@@ -333,529 +396,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // Today's Word Card with Swipe Gestures
-                    GestureDetector(
-                      onVerticalDragEnd: (details) {
-                        // Swipe Up - lower threshold for better detection
-                        if (details.primaryVelocity != null &&
-                            details.primaryVelocity! < -300) {
-                          _handleSwipeQuiz(QuizType.meaning);
-                        }
-                      },
-                      onHorizontalDragEnd: (details) {
-                        // Swipe Left - lower threshold
-                        if (details.primaryVelocity != null &&
-                            details.primaryVelocity! < -300) {
-                          _handleSwipeQuiz(QuizType.synonym);
-                        }
-                        // Swipe Right - lower threshold
-                        if (details.primaryVelocity != null &&
-                            details.primaryVelocity! > 300) {
-                          _handleSwipeQuiz(QuizType.antonym);
-                        }
-                      },
-                      // Also handle drag updates for better feedback
-                      onVerticalDragUpdate: (details) {
-                        // Optional: Add visual feedback during drag
-                      },
-                      onHorizontalDragUpdate: (details) {
-                        // Optional: Add visual feedback during drag
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: ThemeColors.getCardColor(context),
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppLocalizations.of(context)!.todayWords,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: ThemeColors.getTextColor(context),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        todaysWords.isNotEmpty
-                                            ? todaysWords[0]['word'] ??
-                                                  AppLocalizations.of(
-                                                    context,
-                                                  )!.word
-                                            : AppLocalizations.of(
-                                                context,
-                                              )!.noWordsToday,
-                                        style: TextStyle(
-                                          fontSize: 32,
-                                          fontWeight: FontWeight.bold,
-                                          color: ThemeColors.getTextColor(
-                                            context,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        todaysWords.isNotEmpty
-                                            ? todaysWords[0]['meaning'] ??
-                                                  AppLocalizations.of(
-                                                    context,
-                                                  )!.meaning
-                                            : AppLocalizations.of(
-                                                context,
-                                              )!.addFirstWord,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color:
-                                              ThemeColors.getSecondaryTextColor(
-                                                context,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: OutlinedButton.icon(
-                                    onPressed: todaysWords.isNotEmpty
-                                        ? () => _speak(
-                                            todaysWords[0]['word'] ?? '',
-                                          )
-                                        : null,
-                                    icon: const Icon(Icons.volume_up),
-                                    label: Text(
-                                      AppLocalizations.of(context)!.listen,
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: ThemeColors.getTextColor(
-                                        context,
-                                      ),
-                                      side: BorderSide(
-                                        color: ThemeColors.getBorderColor(
-                                          context,
-                                        ),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                        horizontal: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                              ],
-                            ),
-                            if (_allWords.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.swipe_up,
-                                        size: 14,
-                                        color:
-                                            ThemeColors.getSecondaryTextColor(
-                                              context,
-                                            ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '↑ ${AppLocalizations.of(context)!.meaning}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color:
-                                              ThemeColors.getSecondaryTextColor(
-                                                context,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.swipe_left,
-                                        size: 14,
-                                        color:
-                                            ThemeColors.getSecondaryTextColor(
-                                              context,
-                                            ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '← ${AppLocalizations.of(context)!.synonym}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color:
-                                              ThemeColors.getSecondaryTextColor(
-                                                context,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.swipe_right,
-                                        size: 14,
-                                        color:
-                                            ThemeColors.getSecondaryTextColor(
-                                              context,
-                                            ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '→ ${AppLocalizations.of(context)!.antonym}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color:
-                                              ThemeColors.getSecondaryTextColor(
-                                                context,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Stats Cards
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: ThemeColors.getCardColor(context),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Consumer<StreakViewModel>(
-                        builder: (context, streakVm, child) {
-                          return LayoutBuilder(
-                            builder: (context, constraints) {
-                              // Use different layouts based on available width
-                              if (constraints.maxWidth < 350) {
-                                // Stack vertically on very small screens
-                                return Column(
-                                  children: [
-                                    _buildStatCard(
-                                      icon: Icons.local_fire_department,
-                                      value: streakVm.streak.currentStreak
-                                          .toString(),
-                                      label: 'Day streak',
-                                      isCompact: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Consumer<XPViewModel>(
-                                            builder: (context, xpVm, child) {
-                                              return _buildStatCard(
-                                                icon: Icons.stars,
-                                                value: xpVm
-                                                    .getXPDisplayText()
-                                                    .replaceAll(' XP', ''),
-                                                label: 'XP',
-                                                isCompact: true,
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _buildStatCard(
-                                            icon: Icons.today,
-                                            value: todaysWords.length
-                                                .toString(),
-                                            label: 'Today',
-                                            isCompact: true,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                );
-                              } else {
-                                // Use row layout for larger screens
-                                return Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    Expanded(
-                                      child: _buildStatCard(
-                                        icon: Icons.local_fire_department,
-                                        value: streakVm.streak.currentStreak
-                                            .toString(),
-                                        label: 'Day streak',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Consumer<XPViewModel>(
-                                        builder: (context, xpVm, child) {
-                                          return _buildStatCard(
-                                            icon: Icons.stars,
-                                            value: xpVm
-                                                .getXPDisplayText()
-                                                .replaceAll(' XP', ''),
-                                            label: 'XP',
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _buildStatCard(
-                                        icon: Icons.today,
-                                        value: todaysWords.length.toString(),
-                                        label: 'Today',
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Quick Actions
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        if (constraints.maxWidth < 400) {
-                          // Stack actions vertically on small screens
-                          return Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildActionButton(
-                                      icon: Icons.add_circle_outline,
-                                      label: AppLocalizations.of(
-                                        context,
-                                      )!.addWord,
-                                      onTap: () async {
-                                        await context.push('/add-word');
-                                        // Refresh data when returning from add word screen
-                                        _refreshData();
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: _buildActionButton(
-                                  icon: Icons.access_time,
-                                  label: 'Review',
-                                  onTap: () async {
-                                    await context.push('/list');
-                                    // Refresh data when returning from word list
-                                    _refreshData();
-                                  },
-                                ),
-                              ),
-                            ],
-                          );
-                        } else {
-                          // Use row layout for larger screens
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: _buildActionButton(
-                                  icon: Icons.add_circle_outline,
-                                  label: AppLocalizations.of(context)!.addWord,
-                                  onTap: () async {
-                                    await context.push('/add-word');
-                                    // Refresh data when returning from add word screen
-                                    _refreshData();
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildActionButton(
-                                  icon: Icons.access_time,
-                                  label: 'Review',
-                                  onTap: () async {
-                                    await context.push('/list');
-                                    // Refresh data when returning from word list
-                                    _refreshData();
-                                  },
-                                ),
-                              ),
-                              // Expanded(
-                              //   child: _buildActionButton(
-                              //     icon: Icons.auto_awesome,
-                              //     label: 'Start Quiz',
-                              //     onTap: () {
-                              //       // TODO: Navigate to quiz
-                              //     },
-                              //   ),
-                              // ),
-                              // const SizedBox(width: 12),
-                              // Expanded(
-                              //   child: _buildActionButton(
-                              //     icon: Icons.access_time,
-                              //     label: 'Review',
-                              //     onTap: () => context.push('/list'),
-                              //   ),
-                              // ),
-                            ],
-                          );
-                        }
-                      },
-                    ),
+                    // Tinder-style Card Stack
+                    SizedBox(height: 500, child: _buildCardStack()),
 
                     const SizedBox(height: 24),
-                    /*
-
-              // Today's Goal
-              const Text(
-                "Today's Goal",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkGray,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.progressGray,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: 0.6,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.lightGreen,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '12/20 XP • Keep it up!',
-                style: TextStyle(color: AppColors.lightGray, fontSize: 14),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Search Bar
-              TextField(
-                decoration: InputDecoration(
-                  hintText: AppLocalizations.of(context)!.searchWords,
-                  hintStyle: const TextStyle(color: AppColors.lightGray),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.lightGray,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.tune, color: AppColors.lightGray),
-                    onPressed: () {
-                      // TODO: Open filters
-                    },
-                  ),
-                  filled: true,
-                  fillColor: AppColors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Filter Chips
-              Row(
-                children: [
-                  _buildFilterChip(AppLocalizations.of(context)!.all, isSelected: true),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(AppLocalizations.of(context)!.newWords, isSelected: false),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(AppLocalizations.of(context)!.mastered, isSelected: false),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Your Library
-              Text(
-                AppLocalizations.of(context)!.yourLibrary,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: ThemeColors.getTextColor(context),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Word List
-              if (todaysWords.isNotEmpty)
-                ...todaysWords
-                    .take(3)
-                    .map(
-                      (word) => _buildWordCard(
-                        word: word['word'] ?? '',
-                        definition: word['definition'] ?? '',
-                        level: AppLocalizations.of(context)!.levelLabelWithNumber(word['level'] ?? 1),
-                        lastReviewed: 'Last reviewed 2d ago',
-                      ),
-                    )
-              else
-                _buildWordCard(
-                  word: 'Ebullient',
-                  definition: 'Last reviewed 2d ago • Syn ✓ • Ant ✓',
-                  level: AppLocalizations.of(context)!.levelLabelWithNumber(3),
-                  lastReviewed: '',
-                  levelColor: AppColors.lightGreen,
-                ),
-          
-
-          */
                   ],
                 ),
               ),
@@ -866,109 +410,370 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.black.withOpacity(0.3),
                 child: const Center(child: CircularProgressIndicator()),
               ),
+            // Curved Floating Action Buttons
+            _buildCurvedFABs(),
           ],
         ),
       ), // End of Scaffold
     ); // End of PopScope
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String value,
-    required String label,
-    bool isCompact = false,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildCardStack() {
+    if (_wordStack.isEmpty) {
+      return _buildEmptyCardState();
+    }
 
-    return Container(
-      padding: EdgeInsets.all(isCompact ? 12 : 16),
-      constraints: const BoxConstraints(minWidth: 80, maxWidth: 120),
-      decoration: BoxDecoration(
-        // Use splash screen logo container color
-        color: ThemeColors.getStatCardColor(context),
-        borderRadius: BorderRadius.circular(16),
-        // Add subtle shadow for depth
-        boxShadow: isDark
-            ? [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            // Use splash screen icon color
-            color: ThemeColors.getStatCardIconColor(context),
-            size: isCompact ? 20 : 24,
-          ),
-          SizedBox(height: isCompact ? 4 : 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: isCompact ? 20 : 24,
-                fontWeight: FontWeight.bold,
-                // Use splash screen text color
-                color: ThemeColors.getStatCardIconColor(context),
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: isCompact ? 10 : 12,
-                color: isDark
-                    ? ThemeColors.getSecondaryTextColor(context)
-                    : AppColors.lightGray,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
+    // Check if we've reached the last card
+    if (_currentCardIndex >= _wordStack.length) {
+      return _buildNoMoreWordsState();
+    }
+
+    // Only show the current card - clean single card view
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: _buildWordCard(_wordStack[_currentCardIndex], isTopCard: true),
       ),
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
+  Widget _buildWordCard(
+    Map<String, dynamic> wordData, {
+    required bool isTopCard,
   }) {
+    final wordText = wordData['word']?.toString() ?? '';
+    final meaning = wordData['meaning']?.toString() ?? '';
+
     return GestureDetector(
-      onTap: onTap,
+      onVerticalDragEnd: (details) {
+        if (!isTopCard) return;
+        // Swipe Up - Quiz (Meaning)
+        if (details.primaryVelocity != null &&
+            details.primaryVelocity! < -300) {
+          _handleSwipeQuiz(QuizType.meaning);
+        }
+        // Swipe Down - Next Card
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          _moveToNextCard();
+        }
+      },
+      onHorizontalDragEnd: (details) {
+        if (!isTopCard) return;
+        // Swipe Left - Quiz (Synonym)
+        if (details.primaryVelocity != null &&
+            details.primaryVelocity! < -300) {
+          _handleSwipeQuiz(QuizType.synonym);
+        }
+        // Swipe Right - Quiz (Antonym)
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          _handleSwipeQuiz(QuizType.antonym);
+        }
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 380, minHeight: 400),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            // Soft, subtle elevation
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: SizedBox(
+            height: 400,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with refresh button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.todayWords,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.grey[400],
+                        size: 20,
+                      ),
+                      onPressed: _refreshCards,
+                      tooltip: 'Refresh to most recent',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Word - Large, bold, prominent
+                Text(
+                  wordText.isNotEmpty
+                      ? wordText
+                      : AppLocalizations.of(context)!.noWordsToday,
+                  style: TextStyle(
+                    fontSize: 42,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[900],
+                    height: 1.2,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Meaning - Simple description
+                Text(
+                  meaning.isNotEmpty
+                      ? meaning
+                      : AppLocalizations.of(context)!.addFirstWord,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    height: 1.5,
+                  ),
+                ),
+                const Spacer(),
+                // Listen Button - Simple, clean
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: wordText.isNotEmpty
+                        ? () => _speak(wordText)
+                        : null,
+                    icon: Icon(
+                      Icons.volume_up_rounded,
+                      size: 20,
+                      color: wordText.isNotEmpty
+                          ? ThemeColors.getPrimaryColor(context)
+                          : Colors.grey[400],
+                    ),
+                    label: Text(
+                      AppLocalizations.of(context)!.listen,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: ThemeColors.getPrimaryColor(context),
+                      side: BorderSide(
+                        color: wordText.isNotEmpty
+                            ? ThemeColors.getPrimaryColor(
+                                context,
+                              ).withOpacity(0.3)
+                            : Colors.grey[300]!,
+                        width: 1.5,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 18,
+                        horizontal: 24,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyCardState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 400),
         decoration: BoxDecoration(
           color: ThemeColors.getCardColor(context),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: ThemeColors.getTextColor(context), size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: ThemeColors.getTextColor(context),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.book_outlined,
+                  size: 64,
+                  color: ThemeColors.getSecondaryTextColor(context),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.noWordsToday,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeColors.getTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of(context)!.addFirstWord,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: ThemeColors.getSecondaryTextColor(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoMoreWordsState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 400),
+        decoration: BoxDecoration(
+          color: ThemeColors.getCardColor(context),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 25,
+              offset: const Offset(0, 10),
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Header with refresh button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.todayWords,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.refresh_rounded,
+                      color: Colors.grey[400],
+                      size: 20,
+                    ),
+                    onPressed: _refreshCards,
+                    tooltip: 'Refresh to most recent',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
               ),
+              const Spacer(),
+              Icon(
+                Icons.check_circle_outline,
+                size: 64,
+                color: ThemeColors.getPrimaryColor(context),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No More Words',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: ThemeColors.getTextColor(context),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You\'ve viewed all words!',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: ThemeColors.getSecondaryTextColor(context),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await context.push('/add-word');
+                  _refreshData();
+                },
+                icon: const Icon(Icons.add),
+                label: Text(AppLocalizations.of(context)!.addWord),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ThemeColors.getPrimaryColor(context),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCurvedFABs() {
+    return Positioned(
+      right: 20,
+      bottom: 24,
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Review Button (top)
+            _buildCurvedFAB(
+              icon: Icons.access_time_rounded,
+              label: 'Review',
+              onTap: () async {
+                await context.push('/list');
+                _refreshData();
+              },
+            ),
+            const SizedBox(height: 16),
+            // Add Word Button (bottom)
+            _buildCurvedFAB(
+              icon: Icons.add_rounded,
+              label: AppLocalizations.of(context)!.addWord,
+              onTap: () async {
+                await context.push('/add-word');
+                _refreshData();
+              },
             ),
           ],
         ),
@@ -976,84 +781,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, {required bool isSelected}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? ThemeColors.getPrimaryColor(context)
-            : ThemeColors.getCardColor(context),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: AppColors.darkGray,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWordCard({
-    required String word,
-    required String definition,
-    required String level,
-    required String lastReviewed,
-    Color? levelColor,
+  Widget _buildCurvedFAB({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.bookmark_border, color: AppColors.darkGray),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  word,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.darkGray,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  lastReviewed.isNotEmpty ? lastReviewed : definition,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.lightGray,
-                  ),
-                ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                ThemeColors.getPrimaryColor(context),
+                ThemeColors.getPrimaryColor(context).withOpacity(0.8),
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: levelColor ?? AppColors.lightGreen,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              level,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.darkGray,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: ThemeColors.getPrimaryColor(context).withOpacity(0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+                spreadRadius: 0,
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 8),
-          const Icon(Icons.chevron_right, color: AppColors.lightGray),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 22),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

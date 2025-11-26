@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:word_master/viewmodel/words_list_vm.dart';
 import 'package:word_master/core/utils/app_colors.dart';
-import 'package:word_master/core/model/word_model.dart';
 import 'package:go_router/go_router.dart';
 import '../l10n/app_localizations.dart';
 
@@ -271,14 +270,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
     final meaning = word['meaning']?.toString() ?? '';
 
     // Use ViewModel methods for business logic
-    final level = vm.getWordLevel(word);
-    final isMastered = vm.isWordMastered(word);
     final reviewStatus = vm.getWordReviewStatus(word);
-
-    // Count synonyms and antonyms using Word model
-    final wordModel = Word.fromMap(word);
-    final synCount = wordModel.synonymCount;
-    final antCount = wordModel.antonymCount;
 
     return GestureDetector(
       onTap: () {
@@ -314,21 +306,14 @@ class _WordsListScreenState extends State<WordsListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Word and Level
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          wordText,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: ThemeColors.getTextColor(context),
-                          ),
-                        ),
-                      ),
-                      _buildLevelBadge(level, isMastered),
-                    ],
+                  // Word
+                  Text(
+                    wordText,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeColors.getTextColor(context),
+                    ),
                   ),
 
                   const SizedBox(height: 4),
@@ -345,56 +330,6 @@ class _WordsListScreenState extends State<WordsListScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-
-                  const SizedBox(height: 8),
-
-                  // Synonyms and Antonyms Count
-                  if (synCount > 0 || antCount > 0)
-                    Row(
-                      children: [
-                        if (synCount > 0) ...[
-                          Icon(
-                            Icons.sync_alt,
-                            size: 12,
-                            color: ThemeColors.getSecondaryTextColor(context),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            AppLocalizations.of(context)!.synCount(synCount),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: ThemeColors.getSecondaryTextColor(context),
-                            ),
-                          ),
-                        ],
-                        if (synCount > 0 && antCount > 0) ...[
-                          const SizedBox(width: 12),
-                          Text(
-                            '•',
-                            style: TextStyle(
-                              color: ThemeColors.getSecondaryTextColor(context),
-                              fontSize: 10,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        if (antCount > 0) ...[
-                          Icon(
-                            Icons.compare_arrows,
-                            size: 12,
-                            color: ThemeColors.getSecondaryTextColor(context),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            AppLocalizations.of(context)!.antCount(antCount),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: ThemeColors.getSecondaryTextColor(context),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
                 ],
               ),
             ),
@@ -406,58 +341,6 @@ class _WordsListScreenState extends State<WordsListScreen> {
               size: 20,
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLevelBadge(int level, bool isMastered) {
-    if (isMastered) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.green,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          AppLocalizations.of(context)!.mastered,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      );
-    }
-
-    Color levelColor;
-    switch (level) {
-      case 1:
-        levelColor = Colors.orange;
-        break;
-      case 2:
-        levelColor = Colors.blue;
-        break;
-      case 3:
-        levelColor = Colors.green;
-        break;
-      default:
-        levelColor = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: levelColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: levelColor.withOpacity(0.3)),
-      ),
-      child: Text(
-        AppLocalizations.of(context)!.levelLabelWithNumber(level),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: levelColor,
         ),
       ),
     );
