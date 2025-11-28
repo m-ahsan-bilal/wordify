@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/utils/app_colors.dart';
 import '../viewmodel/backup_vm.dart';
+import 'widgets/ad_banner_widget.dart';
 import '../l10n/app_localizations.dart';
 
 /// Backup Screen - Handles Google Drive backup and restore
@@ -18,7 +19,9 @@ class _BackupScreenState extends State<BackupScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<BackupViewModel>().checkSignInStatus();
+      if (mounted) {
+        context.read<BackupViewModel>().checkSignInStatus();
+      }
     });
   }
 
@@ -47,44 +50,52 @@ class _BackupScreenState extends State<BackupScreen> {
       ),
       body: Consumer<BackupViewModel>(
         builder: (context, backupVm, _) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Info Card
-                _buildInfoCard(context),
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Info Card
+                      _buildInfoCard(context),
 
-                const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                // Status Messages
-                if (backupVm.error != null)
-                  _buildErrorCard(context, backupVm.error!),
-                if (backupVm.successMessage != null)
-                  _buildSuccessCard(context, backupVm.successMessage!),
+                      // Status Messages
+                      if (backupVm.error != null)
+                        _buildErrorCard(context, backupVm.error!),
+                      if (backupVm.successMessage != null)
+                        _buildSuccessCard(context, backupVm.successMessage!),
 
-                const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                // Sign In Section
-                if (!backupVm.isSignedIn)
-                  _buildSignInSection(context, backupVm),
+                      // Sign In Section
+                      if (!backupVm.isSignedIn)
+                        _buildSignInSection(context, backupVm),
 
-                // Signed In Section
-                if (backupVm.isSignedIn)
-                  _buildSignedInSection(context, backupVm),
+                      // Signed In Section
+                      if (backupVm.isSignedIn)
+                        _buildSignedInSection(context, backupVm),
 
-                const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                // Loading Indicator
-                if (backupVm.isLoading)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator(),
-                    ),
+                      // Loading Indicator
+                      if (backupVm.isLoading)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
+                ),
+              ),
+              // Ad Banner at bottom
+              const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
+            ],
           );
         },
       ),
@@ -121,7 +132,7 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Backup your vocabulary data to Google Drive and restore it on any device. Your words, progress, streaks, and quiz history will be safely stored in the cloud.',
+            AppLocalizations.of(context)!.backupDescription,
             style: TextStyle(
               fontSize: 14,
               height: 1.6,
@@ -132,7 +143,9 @@ class _BackupScreenState extends State<BackupScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: ThemeColors.getPrimaryColor(context).withOpacity(0.1),
+              color: ThemeColors.getPrimaryColor(
+                context,
+              ).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -188,17 +201,49 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: backupVm.isLoading
-                ? null
-                : () async {
-                    backupVm.clearMessages();
-                    await backupVm.signIn();
-                  },
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkOnSurface
+                            : Colors.white,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'This feature is under development',
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkOnSurface
+                                : Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: ThemeColors.getPrimaryColor(context),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            },
             icon: const Icon(Icons.login),
             label: Text(AppLocalizations.of(context)!.signInWithGoogle),
             style: ElevatedButton.styleFrom(
               backgroundColor: ThemeColors.getPrimaryColor(context),
-              foregroundColor: ThemeColors.getOnPrimaryColor(context),
+              foregroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkOnSurface
+                  : AppColors.darkGray,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -259,8 +304,10 @@ class _BackupScreenState extends State<BackupScreen> {
                     onPressed: backupVm.isLoading
                         ? null
                         : () async {
+                            if (!mounted) return;
                             backupVm.clearMessages();
                             await backupVm.signOut();
+                            if (!mounted) return;
                           },
                     child: Text(
                       AppLocalizations.of(context)!.signOut,
@@ -282,9 +329,11 @@ class _BackupScreenState extends State<BackupScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.lightGreen.withOpacity(0.1),
+              color: AppColors.lightGreen.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.lightGreen.withOpacity(0.3)),
+              border: Border.all(
+                color: AppColors.lightGreen.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
@@ -307,25 +356,48 @@ class _BackupScreenState extends State<BackupScreen> {
 
         // Create Backup Button
         ElevatedButton.icon(
-          onPressed: backupVm.isLoading
-              ? null
-              : () async {
-                  backupVm.clearMessages();
-                  await backupVm.createBackup();
-                  if (backupVm.successMessage != null && mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(backupVm.successMessage!),
-                        backgroundColor: AppColors.lightGreen,
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkOnSurface
+                          : Colors.white,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'This feature is under development',
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkOnSurface
+                              : Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
-                    );
-                  }
-                },
+                    ),
+                  ],
+                ),
+                backgroundColor: ThemeColors.getPrimaryColor(context),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                margin: const EdgeInsets.all(16),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          },
           icon: const Icon(Icons.backup),
           label: Text(AppLocalizations.of(context)!.createBackup),
           style: ElevatedButton.styleFrom(
             backgroundColor: ThemeColors.getPrimaryColor(context),
-            foregroundColor: ThemeColors.getOnPrimaryColor(context),
+            foregroundColor: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkOnSurface
+                : Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -338,66 +410,42 @@ class _BackupScreenState extends State<BackupScreen> {
         // Restore Backup Button
         if (backupVm.backupExists)
           OutlinedButton.icon(
-            onPressed: backupVm.isLoading
-                ? null
-                : () async {
-                    // Show confirmation dialog
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        backgroundColor: ThemeColors.getCardColor(context),
-                        title: Text(
-                          AppLocalizations.of(context)!.restoreBackup,
-                          style: TextStyle(
-                            color: ThemeColors.getTextColor(context),
-                          ),
-                        ),
-                        content: Text(
-                          AppLocalizations.of(context)!.restoreConfirm,
-                          style: TextStyle(
-                            color: ThemeColors.getTextColor(context),
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                color: ThemeColors.getSecondaryTextColor(
-                                  context,
-                                ),
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: Text(
-                              AppLocalizations.of(context)!.restore,
-                              style: TextStyle(
-                                color: ThemeColors.getPrimaryColor(context),
-                              ),
-                            ),
-                          ),
-                        ],
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkOnSurface
+                            : Colors.white,
                       ),
-                    );
-
-                    if (confirm == true && mounted) {
-                      backupVm.clearMessages();
-                      await backupVm.restoreBackup();
-                      if (backupVm.successMessage != null && mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(backupVm.successMessage!),
-                            backgroundColor: AppColors.lightGreen,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'This feature is under development',
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkOnSurface
+                                : Colors.white,
+                            fontSize: 14,
                           ),
-                        );
-                        // Refresh app data after restore
-                        Navigator.pop(context);
-                      }
-                    }
-                  },
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: ThemeColors.getPrimaryColor(context),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            },
             icon: const Icon(Icons.restore),
             label: Text(AppLocalizations.of(context)!.backupRestore),
             style: OutlinedButton.styleFrom(
@@ -414,16 +462,17 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   Widget _buildErrorCard(BuildContext context, String error) {
+    final errorColor = Theme.of(context).colorScheme.error;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: errorColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
+        border: Border.all(color: errorColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: Colors.red),
+          Icon(Icons.error_outline, color: errorColor),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -443,9 +492,9 @@ class _BackupScreenState extends State<BackupScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.lightGreen.withOpacity(0.1),
+        color: AppColors.lightGreen.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.lightGreen.withOpacity(0.3)),
+        border: Border.all(color: AppColors.lightGreen.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

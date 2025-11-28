@@ -60,14 +60,12 @@ class QuizResult {
   final bool isCorrect;
   final String selectedAnswer;
   final String correctAnswer;
-  final int xpEarned;
   final DateTime answeredAt;
 
   QuizResult({
     required this.isCorrect,
     required this.selectedAnswer,
     required this.correctAnswer,
-    required this.xpEarned,
     DateTime? answeredAt,
   }) : answeredAt = answeredAt ?? DateTime.now();
 
@@ -76,7 +74,6 @@ class QuizResult {
     isCorrect: map['isCorrect'] ?? false,
     selectedAnswer: map['selectedAnswer'] ?? '',
     correctAnswer: map['correctAnswer'] ?? '',
-    xpEarned: map['xpEarned'] ?? 0,
     answeredAt: map['answeredAt'] != null
         ? DateTime.parse(map['answeredAt'])
         : DateTime.now(),
@@ -87,7 +84,6 @@ class QuizResult {
     'isCorrect': isCorrect,
     'selectedAnswer': selectedAnswer,
     'correctAnswer': correctAnswer,
-    'xpEarned': xpEarned,
     'answeredAt': answeredAt.toIso8601String(),
   };
 }

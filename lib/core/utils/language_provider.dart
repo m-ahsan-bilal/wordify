@@ -28,7 +28,7 @@ class LanguageProvider extends ChangeNotifier {
 
   Future<void> setLanguage(String languageCode) async {
     if (_locale.languageCode == languageCode) return;
-    
+
     _locale = Locale(languageCode);
     await _settingsBox.put(_languageKey, languageCode);
     notifyListeners();
@@ -57,4 +57,3 @@ class LanguageProvider extends ChangeNotifier {
     }
   }
 }
-

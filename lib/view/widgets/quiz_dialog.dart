@@ -19,8 +19,6 @@ class _QuizDialogState extends State<QuizDialog>
   String? _selectedAnswer;
   bool _isAnswered = false;
   bool _isCorrect = false;
-  int _xpEarned = 0;
-  bool _leveledUp = false;
   bool _isClosing = false; // Prevent double-pop
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -55,14 +53,12 @@ class _QuizDialogState extends State<QuizDialog>
     });
 
     final quizVm = Provider.of<QuizViewModel>(context, listen: false);
-    final result = await quizVm.submitAnswer(answer);
+    final isCorrect = await quizVm.submitAnswer(answer);
 
     if (!mounted) return;
 
     setState(() {
-      _isCorrect = result.isCorrect;
-      _xpEarned = result.xpEarned;
-      _leveledUp = result.leveledUp;
+      _isCorrect = isCorrect;
     });
 
     // Trigger animation
@@ -84,21 +80,21 @@ class _QuizDialogState extends State<QuizDialog>
   Color _getOptionColor(String option) {
     final primaryColor = ThemeColors.getPrimaryColor(context);
     final backgroundColor = ThemeColors.getBackgroundColor(context);
-    
+
     if (!_isAnswered) {
       return _selectedAnswer == option
-          ? primaryColor.withOpacity(0.2)
+          ? primaryColor.withValues(alpha: 0.2)
           : Colors.transparent;
     }
 
     if (option == widget.question.correctAnswer) {
       // Use primary color with lighter shade for correct
-      return primaryColor.withOpacity(0.15);
+      return primaryColor.withValues(alpha: 0.15);
     }
 
     if (option == _selectedAnswer && !_isCorrect) {
       // Use a darker shade of background for incorrect
-      return backgroundColor.withOpacity(0.5);
+      return backgroundColor.withValues(alpha: 0.5);
     }
 
     return Colors.transparent;
@@ -106,7 +102,7 @@ class _QuizDialogState extends State<QuizDialog>
 
   Color _getOptionBorderColor(String option) {
     final primaryColor = ThemeColors.getPrimaryColor(context);
-    
+
     if (!_isAnswered) {
       return _selectedAnswer == option
           ? primaryColor
@@ -142,13 +138,15 @@ class _QuizDialogState extends State<QuizDialog>
 
   Color _getOptionIconColor(String option) {
     final primaryColor = ThemeColors.getPrimaryColor(context);
-    
+
     if (option == widget.question.correctAnswer) {
       return primaryColor; // Use primary color instead of green
     }
 
     if (option == _selectedAnswer && !_isCorrect) {
-      return ThemeColors.getSecondaryTextColor(context); // Muted color for incorrect
+      return ThemeColors.getSecondaryTextColor(
+        context,
+      ); // Muted color for incorrect
     }
 
     return Colors.transparent;
@@ -267,11 +265,11 @@ class _QuizDialogState extends State<QuizDialog>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: _isCorrect
-                  ? ThemeColors.getPrimaryColor(context).withOpacity(0.15)
-                  : ThemeColors.getBackgroundColor(context).withOpacity(0.5),
+                  ? ThemeColors.getPrimaryColor(context).withValues(alpha: 0.15)
+                  : ThemeColors.getBackgroundColor(context).withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _isCorrect 
+                color: _isCorrect
                     ? ThemeColors.getPrimaryColor(context)
                     : ThemeColors.getSecondaryTextColor(context),
                 width: 2,
@@ -284,7 +282,7 @@ class _QuizDialogState extends State<QuizDialog>
                   children: [
                     Icon(
                       _isCorrect ? Icons.check_circle : Icons.cancel,
-                      color: _isCorrect 
+                      color: _isCorrect
                           ? ThemeColors.getPrimaryColor(context)
                           : ThemeColors.getSecondaryTextColor(context),
                       size: 32,
@@ -295,7 +293,7 @@ class _QuizDialogState extends State<QuizDialog>
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: _isCorrect 
+                        color: _isCorrect
                             ? ThemeColors.getPrimaryColor(context)
                             : ThemeColors.getSecondaryTextColor(context),
                       ),
@@ -312,49 +310,6 @@ class _QuizDialogState extends State<QuizDialog>
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.stars,
-                        color: ThemeColors.getPrimaryColor(context),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '+$_xpEarned XP',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: ThemeColors.getPrimaryColor(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_leveledUp) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: ThemeColors.getPrimaryColor(
-                          context,
-                        ).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'Level Up! 🎉',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: ThemeColors.getPrimaryColor(context),
-                        ),
-                      ),
-                    ),
-                  ],
                 ] else ...[
                   const SizedBox(height: 12),
                   Text(
@@ -377,11 +332,11 @@ class _QuizDialogState extends State<QuizDialog>
   String _getQuizTypeLabel(QuizType type) {
     switch (type) {
       case QuizType.meaning:
-        return '📖 Meaning Quiz';
+        return 'Meaning Quiz';
       case QuizType.synonym:
-        return '🔗 Synonym Quiz';
+        return 'Synonym Quiz';
       case QuizType.antonym:
-        return '⚡ Antonym Quiz';
+        return 'Antonym Quiz';
     }
   }
 }

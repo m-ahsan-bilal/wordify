@@ -89,25 +89,78 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Check if user has seen onboarding
     try {
-      final box = await Hive.openBox('settings');
+      final box = await Hive.openBox('settings').timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Hive box open timeout');
+          return Hive.box('settings'); // Return existing box if timeout
+        },
+      );
       final hasSeenOnboarding = box.get('onboarding', defaultValue: false);
+
+      if (!mounted) return;
+
+      // Add a delay to ensure router and providers are ready
+      await Future.delayed(const Duration(milliseconds: 500));
 
       if (!mounted) return;
 
       if (hasSeenOnboarding) {
         if (context.mounted) {
-          context.go('/home');
+          try {
+            context.go('/home');
+          } catch (e) {
+            debugPrint('Error navigating to home: $e');
+            // Retry navigation after a delay
+            await Future.delayed(const Duration(milliseconds: 500));
+            if (mounted && context.mounted) {
+              try {
+                context.go('/home');
+              } catch (e2) {
+                debugPrint('Retry navigation failed: $e2');
+                // Final fallback
+                await Future.delayed(const Duration(milliseconds: 500));
+                if (mounted && context.mounted) {
+                  try {
+                    context.go('/home');
+                  } catch (e3) {
+                    debugPrint('Final navigation retry failed: $e3');
+                  }
+                }
+              }
+            }
+          }
         }
       } else {
         if (context.mounted) {
-          context.go('/onboarding');
+          try {
+            context.go('/onboarding');
+          } catch (e) {
+            debugPrint('Error navigating to onboarding: $e');
+            // Retry navigation after a delay
+            await Future.delayed(const Duration(milliseconds: 500));
+            if (mounted && context.mounted) {
+              try {
+                context.go('/onboarding');
+              } catch (e2) {
+                debugPrint('Retry navigation failed: $e2');
+              }
+            }
+          }
         }
       }
     } catch (e) {
       debugPrint('Error navigating from splash: $e');
-      // If there's an error, default to onboarding
-      if (mounted && context.mounted) {
-        context.go('/onboarding');
+      // If there's an error, default to onboarding with retry
+      if (mounted) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (context.mounted) {
+          try {
+            context.go('/onboarding');
+          } catch (e2) {
+            debugPrint('Fallback navigation failed: $e2');
+          }
+        }
       }
     }
   }
@@ -138,7 +191,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
 
                 // Spacer to push content to center
-                const Spacer(),
+                const Expanded(child: SizedBox()),
 
                 // Central card with fade and scale animations
                 FadeTransition(
@@ -150,7 +203,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
 
                 // Spacer
-                const Spacer(),
+                const Expanded(child: SizedBox()),
 
                 // Bottom text with fade animation
                 FadeTransition(
@@ -185,7 +238,7 @@ class _BackgroundGradient extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [AppColors.lightLavender, AppColors.white],
+              colors: [AppColors.lightLavender, AppColors.lightLavender],
             ),
           ),
           child: Stack(
@@ -198,7 +251,7 @@ class _BackgroundGradient extends StatelessWidget {
                   width: 200,
                   height: 200,
                   decoration: BoxDecoration(
-                    color: AppColors.lightPurple.withOpacity(0.3),
+                    color: AppColors.lightPurple.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(40),
                   ),
                 ),
@@ -211,7 +264,7 @@ class _BackgroundGradient extends StatelessWidget {
                   width: 150,
                   height: 150,
                   decoration: BoxDecoration(
-                    color: AppColors.lightBlue.withOpacity(0.4),
+                    color: AppColors.lightBlue.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
@@ -224,7 +277,7 @@ class _BackgroundGradient extends StatelessWidget {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: AppColors.lightPurple.withOpacity(0.25),
+                    color: AppColors.lightPurple.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(25),
                   ),
                 ),
@@ -237,7 +290,7 @@ class _BackgroundGradient extends StatelessWidget {
                   width: 180,
                   height: 180,
                   decoration: BoxDecoration(
-                    color: AppColors.lightBlue.withOpacity(0.3),
+                    color: AppColors.lightBlue.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(35),
                   ),
                 ),
@@ -296,11 +349,11 @@ class _SplashCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.lightLavender,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),

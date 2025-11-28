@@ -2,18 +2,14 @@ import 'package:flutter/foundation.dart';
 import '../core/model/quiz_model.dart';
 import '../core/model/word_model.dart';
 import '../core/repositories/quiz_repository.dart';
-import '../core/repositories/xp_repository.dart';
 
-/// ViewModel for Quiz management
+// ViewModel for Quiz management
 class QuizViewModel extends ChangeNotifier {
   final QuizRepository _quizRepository;
-  final XPRepository _xpRepository;
 
   QuizViewModel({
     required QuizRepository quizRepository,
-    required XPRepository xpRepository,
-  })  : _quizRepository = quizRepository,
-        _xpRepository = xpRepository;
+  }) : _quizRepository = quizRepository;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -24,7 +20,7 @@ class QuizViewModel extends ChangeNotifier {
   QuizQuestion? _currentQuestion;
   QuizQuestion? get currentQuestion => _currentQuestion;
 
-  /// Generate a quiz question
+  // Generate a quiz question
   Future<QuizQuestion?> generateQuestion(
     Word word,
     QuizType type,
@@ -56,62 +52,41 @@ class QuizViewModel extends ChangeNotifier {
     }
   }
 
-  /// Submit an answer and award XP if correct
-  Future<({bool isCorrect, int xpEarned, bool leveledUp})> submitAnswer(
+  /// Submit an answer
+  Future<bool> submitAnswer(
     String selectedAnswer,
   ) async {
     if (_currentQuestion == null) {
-      return (isCorrect: false, xpEarned: 0, leveledUp: false);
+      return false;
     }
 
     final isCorrect = _currentQuestion!.isCorrect(selectedAnswer);
-    int xpEarned = 0;
-    bool leveledUp = false;
-
-    // Award XP only for correct answers
-    if (isCorrect) {
-      // Base XP for correct answer
-      xpEarned = 5;
-
-      // Bonus XP based on quiz type difficulty
-      switch (_currentQuestion!.type) {
-        case QuizType.meaning:
-          xpEarned += 2; // Meaning is easier
-          break;
-        case QuizType.synonym:
-          xpEarned += 3; // Synonym is medium difficulty
-          break;
-        case QuizType.antonym:
-          xpEarned += 4; // Antonym is harder
-          break;
-      }
-
-      // Award XP
-      final result = await _xpRepository.addXP(xpEarned);
-      leveledUp = result.leveledUp;
-    }
 
     // Record quiz result
     final quizResult = QuizResult(
       isCorrect: isCorrect,
       selectedAnswer: selectedAnswer,
       correctAnswer: _currentQuestion!.correctAnswer,
-      xpEarned: xpEarned,
     );
 
     await _quizRepository.recordQuizResult(quizResult);
 
     // Update quiz history
-    final history = await _quizRepository.getQuizHistory(_currentQuestion!.word);
-    final updatedHistory = (history ?? WordQuizHistory(word: _currentQuestion!.word))
-        .recordQuiz(_currentQuestion!.type, isCorrect);
+    final history = await _quizRepository.getQuizHistory(
+      _currentQuestion!.word,
+    );
+    final updatedHistory =
+        (history ?? WordQuizHistory(word: _currentQuestion!.word)).recordQuiz(
+          _currentQuestion!.type,
+          isCorrect,
+        );
     await _quizRepository.updateQuizHistory(updatedHistory);
 
     // Clear current question
     _currentQuestion = null;
     notifyListeners();
 
-    return (isCorrect: isCorrect, xpEarned: xpEarned, leveledUp: leveledUp);
+    return isCorrect;
   }
 
   /// Clear current question
@@ -126,4 +101,3 @@ class QuizViewModel extends ChangeNotifier {
     return await _quizRepository.getQuizHistory(word);
   }
 }
-

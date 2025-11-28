@@ -2,11 +2,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/model/backup_model.dart';
 import '../../core/model/streak_model.dart';
-import '../../core/model/xp_model.dart';
 import '../../core/model/quiz_model.dart';
 import 'local/words_local_datasource.dart';
 import 'local/streak_local_datasource.dart';
-import 'local/xp_local_datasource.dart';
 import 'local/quiz_local_datasource.dart';
 
 /// Handles export and import of backup data
@@ -14,7 +12,6 @@ import 'local/quiz_local_datasource.dart';
 class BackupDatasource {
   final WordsLocalDatasource _wordsDatasource = WordsLocalDatasource();
   final StreakLocalDatasource _streakDatasource = StreakLocalDatasource();
-  final XPLocalDatasource _xpDatasource = XPLocalDatasource();
   final QuizLocalDatasource _quizDatasource = QuizLocalDatasource();
 
   /// Export all data to BackupData
@@ -27,14 +24,6 @@ class BackupDatasource {
     final streakData = {
       'currentStreak': streak.currentStreak,
       'lastActivityDate': streak.lastActivityDate?.toIso8601String(),
-    };
-
-    // Export XP
-    final xp = await _xpDatasource.getXP();
-    final xpData = {
-      'totalXP': xp.totalXP,
-      'currentLevel': xp.currentLevel,
-      'lastUpdated': xp.lastUpdated?.toIso8601String(),
     };
 
     // Export quiz history
@@ -52,7 +41,6 @@ class BackupDatasource {
     return BackupData(
       words: wordsData,
       streak: streakData,
-      xp: xpData,
       quizHistory: quizHistoryData,
       quizResults: quizResultsData,
       backupDate: DateTime.now().toIso8601String(),
@@ -78,18 +66,6 @@ class BackupDatasource {
             : null,
       );
       await _streakDatasource.saveStreak(streak);
-    }
-
-    // Import XP
-    if (backupData.xp.isNotEmpty) {
-      final xp = XP(
-        totalXP: backupData.xp['totalXP'] ?? 0,
-        currentLevel: backupData.xp['currentLevel'] ?? 1,
-        lastUpdated: backupData.xp['lastUpdated'] != null
-            ? DateTime.parse(backupData.xp['lastUpdated'])
-            : null,
-      );
-      await _xpDatasource.saveXP(xp);
     }
 
     // Import quiz history

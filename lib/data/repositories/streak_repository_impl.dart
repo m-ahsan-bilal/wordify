@@ -45,6 +45,8 @@ class StreakRepositoryImpl implements StreakRepository {
   }
 
   /// Validate streak and reset if broken (no activity for more than 1 day)
+  /// IMPORTANT: This only validates based on dates, not current activity
+  /// Always call updateStreak() after validation to account for today's activity
   Streak _validateStreak(Streak streak) {
     if (streak.lastActivityDate == null) {
       // No previous activity, ensure streak is 0
@@ -63,12 +65,16 @@ class StreakRepositoryImpl implements StreakRepository {
     final todayDate = DateTime(today.year, today.month, today.day);
     final daysDifference = todayDate.difference(lastDate).inDays;
 
-    // If more than 1 day has passed since last activity, reset streak
+    // Only reset if more than 1 day has passed (2+ days)
+    // If exactly 1 day has passed, the streak might still be valid if user adds word today
+    // The updateStreak() method will handle the actual update based on today's activity
     if (daysDifference > 1) {
+      // More than 1 day passed = streak is definitely broken
       return Streak(currentStreak: 0, lastActivityDate: null);
     }
 
-    // Streak is still valid
+    // Streak is still valid (same day or 1 day difference)
+    // Note: If 1 day difference, updateStreak() will handle incrementing or resetting
     return streak;
   }
 

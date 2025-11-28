@@ -5,7 +5,6 @@ import 'dart:convert';
 class BackupData {
   final List<Map<String, dynamic>> words;
   final Map<String, dynamic> streak;
-  final Map<String, dynamic> xp;
   final List<Map<String, dynamic>> quizHistory;
   final List<Map<String, dynamic>> quizResults;
   final String backupDate;
@@ -14,7 +13,6 @@ class BackupData {
   BackupData({
     required this.words,
     required this.streak,
-    required this.xp,
     required this.quizHistory,
     required this.quizResults,
     required this.backupDate,
@@ -26,7 +24,6 @@ class BackupData {
     return jsonEncode({
       'words': words,
       'streak': streak,
-      'xp': xp,
       'quizHistory': quizHistory,
       'quizResults': quizResults,
       'backupDate': backupDate,
@@ -40,7 +37,6 @@ class BackupData {
     return BackupData(
       words: List<Map<String, dynamic>>.from(data['words'] ?? []),
       streak: Map<String, dynamic>.from(data['streak'] ?? {}),
-      xp: Map<String, dynamic>.from(data['xp'] ?? {}),
       quizHistory: List<Map<String, dynamic>>.from(data['quizHistory'] ?? []),
       quizResults: List<Map<String, dynamic>>.from(data['quizResults'] ?? []),
       backupDate: data['backupDate'] ?? '',
@@ -53,7 +49,6 @@ class BackupData {
     return BackupData(
       words: [],
       streak: {},
-      xp: {},
       quizHistory: [],
       quizResults: [],
       backupDate: DateTime.now().toIso8601String(),

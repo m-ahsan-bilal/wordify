@@ -64,32 +64,6 @@ class Word {
     );
   }
 
-  /// Calculate XP earned for this word based on complexity and completeness
-  /// Balanced for future features like quizzes, reviews, achievements
-  int get xp {
-    int totalXP = 0;
-
-    // Base XP for adding any word (reduced from 10 to 3)
-    totalXP += 3;
-
-    // XP based on word complexity (reduced significantly)
-    if (word.length <= 4) {
-      totalXP += 1; // Simple words: +1 XP (was +5)
-    } else if (word.length <= 7) {
-      totalXP += 2; // Medium words: +2 XP (was +10)
-    } else {
-      totalXP += 3; // Complex words: +3 XP (was +20)
-    }
-
-    // Small bonus XP for completeness (greatly reduced)
-    if (meaning.isNotEmpty) totalXP += 2; // +2 XP for meaning (was +15)
-    if (synonyms.isNotEmpty) totalXP += 1; // +1 XP for synonyms (was +10)
-    if (antonyms.isNotEmpty) totalXP += 1; // +1 XP for antonyms (was +10)
-    if (sentence.isNotEmpty) totalXP += 2; // +2 XP for sentence (was +15)
-
-    return totalXP;
-  }
-
   /// Calculate level based on word complexity and completeness
   int get level {
     int score = 0;

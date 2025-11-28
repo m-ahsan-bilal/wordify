@@ -44,23 +44,35 @@ class WordsLocalDatasource {
   }
 
   /// Get words for a specific date
+  /// Uses timezone-aware date comparison (compares only year, month, day)
   Future<List<Map<String, dynamic>>> getWordsByDate({DateTime? date}) async {
     date ??= DateTime.now();
+    // Normalize to local timezone and extract date components only
+    final targetDate = DateTime(date.year, date.month, date.day);
     final formatter = DateFormat('yyyy-MM-dd');
-    final targetDateStr = formatter.format(date);
+    final targetDateStr = formatter.format(targetDate);
 
     return _wordsBox.values.map((e) => Map<String, dynamic>.from(e)).where((
       word,
     ) {
       final dateStr = word['dateAdded'];
       if (dateStr == null) return false;
-      return formatter.format(DateTime.parse(dateStr)) == targetDateStr;
+      
+      // Parse the stored date and normalize to date-only for comparison
+      final wordDate = DateTime.parse(dateStr);
+      final wordDateOnly = DateTime(wordDate.year, wordDate.month, wordDate.day);
+      final wordDateStr = formatter.format(wordDateOnly);
+      
+      return wordDateStr == targetDateStr;
     }).toList();
   }
 
   /// Get today's words
-  Future<List<Map<String, dynamic>>> getTodaysWords() async =>
-      getWordsByDate(date: DateTime.now());
+  /// Uses current local timezone to determine "today"
+  Future<List<Map<String, dynamic>>> getTodaysWords() async {
+    // Use DateTime.now() which is already in local timezone
+    return getWordsByDate(date: DateTime.now());
+  }
 
   /// Get today's words as text strings only
   Future<List<String>> getTodaysWordTexts() async {

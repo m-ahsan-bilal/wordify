@@ -64,6 +64,9 @@ dependencies:
   
   # HTTP client
   http: ^1.2.0
+  
+  # Google Mobile Ads
+  google_mobile_ads: ^5.1.0
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:word_master/viewmodel/words_list_vm.dart';
 import 'package:word_master/core/utils/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import 'widgets/ad_banner_widget.dart';
+import 'widgets/reusable_filter_chip.dart';
 import '../l10n/app_localizations.dart';
 
 class WordsListScreen extends StatefulWidget {
@@ -21,7 +23,6 @@ class _WordsListScreenState extends State<WordsListScreen> {
   // Filter keys for internal use
   static const String _filterAll = 'all';
   static const String _filterNew = 'new';
-  static const String _filterMastered = 'mastered';
 
   @override
   void initState() {
@@ -45,7 +46,9 @@ class _WordsListScreenState extends State<WordsListScreen> {
     List<Map<String, dynamic>> allWords = [];
     allWords.addAll(vm.todaysWords);
     allWords.addAll(vm.yesterdaysWords);
-    vm.olderWords.values.forEach((words) => allWords.addAll(words));
+    for (var words in vm.olderWords.values) {
+      allWords.addAll(words);
+    }
 
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
@@ -70,12 +73,6 @@ class _WordsListScreenState extends State<WordsListScreen> {
         } catch (e) {
           return false;
         }
-      }).toList();
-    } else if (_selectedFilter == _filterMastered) {
-      // For now, randomly mark some as mastered (you can implement actual mastery logic)
-      allWords = allWords.where((word) {
-        final wordText = word['word']?.toString() ?? '';
-        return wordText.length > 8; // Simple logic for demo
       }).toList();
     }
     // else: 'all' - no additional filtering
@@ -123,14 +120,6 @@ class _WordsListScreenState extends State<WordsListScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.more_horiz, color: ThemeColors.getTextColor(context)),
-        //     onPressed: () {
-        //       // TODO: Add more options
-        //     },
-        //   ),
-        // ],
       ),
       body: RefreshIndicator(
         onRefresh: () => vm.loadWords(),
@@ -151,6 +140,8 @@ class _WordsListScreenState extends State<WordsListScreen> {
                     )
                   : _buildEmptyState(),
             ),
+            // Ad Banner at bottom
+            const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
           ],
         ),
       ),
@@ -180,18 +171,13 @@ class _WordsListScreenState extends State<WordsListScreen> {
                 hintStyle: TextStyle(
                   color: ThemeColors.getSecondaryTextColor(
                     context,
-                  ).withOpacity(0.7),
+                  ).withValues(alpha: 0.7),
                 ),
                 prefixIcon: Icon(
                   Icons.search,
                   color: ThemeColors.getSecondaryTextColor(context),
                 ),
-                // suffixIcon: IconButton(
-                //   icon: Icon(Icons.tune, color: ThemeColors.getSecondaryTextColor(context)),
-                //   onPressed: () {
-                //     // TODO: Open advanced filters
-                //   },
-                // ),
+
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -213,8 +199,6 @@ class _WordsListScreenState extends State<WordsListScreen> {
               _buildFilterChip(AppLocalizations.of(context)!.all),
               const SizedBox(width: 8),
               _buildFilterChip(AppLocalizations.of(context)!.newWords),
-              const SizedBox(width: 8),
-              _buildFilterChip(AppLocalizations.of(context)!.mastered),
             ],
           ),
         ],
@@ -227,39 +211,21 @@ class _WordsListScreenState extends State<WordsListScreen> {
     String filterKey = _filterAll;
     if (label == AppLocalizations.of(context)!.newWords) {
       filterKey = _filterNew;
-    } else if (label == AppLocalizations.of(context)!.mastered) {
-      filterKey = _filterMastered;
     }
     final isSelected = _selectedFilter == filterKey;
-    return GestureDetector(
+    return ReusableFilterChip(
+      label: label,
+      isSelected: isSelected,
       onTap: () {
         setState(() {
           // Map localized label to internal filter key
           if (label == AppLocalizations.of(context)!.newWords) {
             _selectedFilter = _filterNew;
-          } else if (label == AppLocalizations.of(context)!.mastered) {
-            _selectedFilter = _filterMastered;
           } else {
             _selectedFilter = _filterAll;
           }
         });
-        HapticFeedback.selectionClick();
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.lightPurple : AppColors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: ThemeColors.getTextColor(context),
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 14,
-          ),
-        ),
-      ),
     );
   }
 
@@ -285,7 +251,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),

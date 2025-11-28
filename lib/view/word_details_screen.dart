@@ -6,6 +6,8 @@ import '../core/model/word_model.dart';
 import '../core/repositories/word_repository.dart';
 import '../core/utils/app_colors.dart';
 import '../viewmodel/add_word_vm.dart';
+import 'widgets/ad_banner_widget.dart';
+import 'widgets/reusable_text_field.dart';
 import '../l10n/app_localizations.dart';
 
 /// Word Details Screen - Uses AddWordViewModel for updates/deletes
@@ -126,12 +128,12 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle, color: Colors.white),
+              Icon(Icons.check_circle, color: ThemeColors.getTextColor(context)),
               const SizedBox(width: 8),
               Text(AppLocalizations.of(context)!.wordUpdatedSuccessfully),
             ],
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.lightGreen,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -144,7 +146,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.error, color: Colors.white),
+              Icon(Icons.error, color: ThemeColors.getTextColor(context)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -154,7 +156,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
               ),
             ],
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -301,11 +303,14 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
       ),
       body: Consumer<AddWordViewModel>(
         builder: (context, viewModel, child) {
-          return Stack(
+          return Column(
             children: [
-              ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
                   if (!isEditing) ...[
                     // View Mode - Word Header Card
                     _buildWordHeaderCard(word),
@@ -336,6 +341,13 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                     ),
                   ),
                 ),
+                  ],
+                ),
+              ),
+              // Ad Banner at bottom
+              const AdBannerWidget(
+                margin: EdgeInsets.symmetric(vertical: 8),
+              ),
             ],
           );
         },
@@ -353,7 +365,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -374,7 +386,6 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                   ),
                 ),
               ),
-              _buildLevelBadge(word),
             ],
           ),
           const SizedBox(height: 8),
@@ -483,12 +494,12 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                   decoration: BoxDecoration(
                     color: ThemeColors.getPrimaryColor(
                       context,
-                    ).withOpacity(0.1),
+                    ).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: ThemeColors.getPrimaryColor(
                         context,
-                      ).withOpacity(0.3),
+                      ).withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(
@@ -534,9 +545,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     antonym.trim(),
@@ -585,7 +596,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: ThemeColors.getSecondaryColor(context).withOpacity(0.3),
+              color: ThemeColors.getSecondaryColor(context).withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -693,57 +704,6 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
     );
   }
 
-  Widget _buildLevelBadge(Word word) {
-    if (word.isMastered) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.green,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          AppLocalizations.of(context)!.mastered,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      );
-    }
-
-    Color levelColor;
-    switch (word.level) {
-      case 1:
-        levelColor = Colors.orange;
-        break;
-      case 2:
-        levelColor = Colors.blue;
-        break;
-      case 3:
-        levelColor = Colors.green;
-        break;
-      default:
-        levelColor = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: levelColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: levelColor.withOpacity(0.3)),
-      ),
-      child: Text(
-        AppLocalizations.of(context)!.levelLabelWithNumber(word.level),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: levelColor,
-        ),
-      ),
-    );
-  }
 
   // Edit Mode Component
   Widget _buildEditForm() {
@@ -845,7 +805,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                 onPressed: _saveChanges,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6C63FF),
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.darkGray,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -900,43 +860,20 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          TextFormField(
+          ReusableTextField(
             controller: controller,
             focusNode: focusNode,
-            textInputAction: nextFocus != null
-                ? TextInputAction.next
-                : TextInputAction.done,
-            onFieldSubmitted: (_) => nextFocus?.requestFocus(),
+            nextFocusNode: nextFocus,
+            hintText: hint,
             maxLines: maxLines,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                color: ThemeColors.getSecondaryTextColor(
-                  context,
-                ).withOpacity(0.7),
-              ),
-              filled: true,
-              fillColor: ThemeColors.getSecondaryColor(
-                context,
-              ).withOpacity(0.3),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
-            ),
-            style: TextStyle(
-              fontSize: 14,
-              color: ThemeColors.getTextColor(context),
-            ),
+            isRequired: isRequired,
             validator: isRequired
                 ? (v) => v == null || v.trim().isEmpty
                       ? AppLocalizations.of(context)!.thisFieldIsRequired
                       : null
                 : null,
+            fillColor: ThemeColors.getSecondaryColor(context)
+                .withValues(alpha: 0.3),
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../core/utils/app_colors.dart';
+import 'widgets/ad_banner_widget.dart';
 import '../l10n/app_localizations.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -148,53 +149,63 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
         ],
       ),
-      body: Center(
-        child: Card(
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          margin: const EdgeInsets.all(16),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  AppLocalizations.of(context)!.whatIsTheMeaningOf(q['word']),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+      body: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const SizedBox(height: 24),
-                ...options.map(
-                  (opt) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50),
-                        backgroundColor: answered
-                            ? (opt == q['meaning']
-                                  ? Colors.green
-                                  : (opt == _selectedOption
-                                        ? Colors.red
-                                        : null))
-                            : null,
+                margin: const EdgeInsets.all(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.whatIsTheMeaningOf(q['word']),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      onPressed: () {
-                        setState(() => _selectedOption = opt);
-                        checkAnswer(opt);
-                      },
-                      child: Text(opt, style: const TextStyle(fontSize: 16)),
-                    ),
+                      const SizedBox(height: 24),
+                      ...options.map(
+                        (opt) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(50),
+                              backgroundColor: answered
+                                  ? (opt == q['meaning']
+                                        ? Colors.green
+                                        : (opt == _selectedOption
+                                              ? Colors.red
+                                              : null))
+                                  : null,
+                            ),
+                            onPressed: () {
+                              setState(() => _selectedOption = opt);
+                              checkAnswer(opt);
+                            },
+                            child: Text(opt, style: const TextStyle(fontSize: 16)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+          // Ad Banner at bottom
+          const AdBannerWidget(
+            margin: EdgeInsets.symmetric(vertical: 8),
+          ),
+        ],
       ),
     );
   }

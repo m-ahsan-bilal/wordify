@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/utils/app_colors.dart';
+import 'widgets/ad_banner_widget.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -27,135 +28,137 @@ class AboutScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // App Logo and Name
-            Center(
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: ThemeColors.getPrimaryColor(context),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: const Icon(
-                      Icons.menu_book,
-                      size: 60,
-                      color: Colors.white,
+                  // App Logo and Name
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: ThemeColors.getPrimaryColor(context),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Image.asset(
+                              'assets/icons/logo.png',
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Word Master',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: ThemeColors.getTextColor(context),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Version 1.0.0',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: ThemeColors.getSecondaryTextColor(context),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Word Master',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: ThemeColors.getTextColor(context),
+
+                  const SizedBox(height: 32),
+
+                  // About Section
+                  _buildSection(
+                    context,
+                    'About the App',
+                    'Word Master is your ultimate vocabulary companion designed to help you expand your word knowledge effortlessly. Whether you\'re a student preparing for exams, a professional looking to enhance your communication skills, or simply someone who loves learning new words, Word Master provides the perfect platform to build and maintain your vocabulary.',
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Features Section
+                  _buildSection(
+                    context,
+                    'Key Features',
+                    '• Add and organize your vocabulary words\n'
+                        '• Track your learning progress\n'
+                        '• Maintain daily learning streaks\n'
+                        '• Review words with interactive quizzes\n'
+                        '• Listen to word pronunciations\n'
+                        '• Categorize words by difficulty levels\n'
+                        '• Dark and light theme support\n'
+                        '• Offline functionality with cloud sync',
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Mission Section
+                  _buildSection(
+                    context,
+                    'Our Mission',
+                    'We believe that a rich vocabulary is the foundation of effective communication. Our mission is to make vocabulary learning engaging, systematic, and rewarding. Through gamification elements like streaks, we transform the traditional approach to vocabulary building into an enjoyable journey of discovery.',
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Contact Section
+                  // _buildSection(
+                  //   context,
+                  //   'Contact Us',
+                  //   'We\'d love to hear from you! Whether you have feedback, suggestions, or need support, feel free to reach out to us.\n\n'
+                  //       'Email: support@wordmaster.com\n'
+                  //       'Website: www.wordmaster.com\n'
+                  //       'Follow us on social media for updates and tips!',
+                  // ),
+                  const SizedBox(height: 24),
+
+                  // Credits Section
+                  const SizedBox(height: 32),
+
+                  // Footer
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          '© 2025 Word Master',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: ThemeColors.getSecondaryTextColor(context),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Made with 💜 for vocabulary enthusiasts',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: ThemeColors.getSecondaryTextColor(context),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Version 1.0.0',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: ThemeColors.getSecondaryTextColor(context),
-                    ),
-                  ),
+
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
-
-            const SizedBox(height: 32),
-
-            // About Section
-            _buildSection(
-              context,
-              'About the App',
-              'Word Master is your ultimate vocabulary companion designed to help you expand your word knowledge effortlessly. Whether you\'re a student preparing for exams, a professional looking to enhance your communication skills, or simply someone who loves learning new words, Word Master provides the perfect platform to build and maintain your vocabulary.',
-            ),
-
-            const SizedBox(height: 24),
-
-            // Features Section
-            _buildSection(
-              context,
-              'Key Features',
-              '• Add and organize your vocabulary words\n'
-                  '• Track your learning progress with XP system\n'
-                  '• Maintain daily learning streaks\n'
-                  '• Review words with interactive quizzes\n'
-                  '• Listen to word pronunciations\n'
-                  '• Categorize words by difficulty levels\n'
-                  '• Dark and light theme support\n'
-                  '• Offline functionality with cloud sync',
-            ),
-
-            const SizedBox(height: 24),
-
-            // Mission Section
-            _buildSection(
-              context,
-              'Our Mission',
-              'We believe that a rich vocabulary is the foundation of effective communication. Our mission is to make vocabulary learning engaging, systematic, and rewarding. Through gamification elements like XP points, streaks, and levels, we transform the traditional approach to vocabulary building into an enjoyable journey of discovery.',
-            ),
-
-            const SizedBox(height: 24),
-
-            // Contact Section
-            _buildSection(
-              context,
-              'Contact Us',
-              'We\'d love to hear from you! Whether you have feedback, suggestions, or need support, feel free to reach out to us.\n\n'
-                  'Email: support@wordmaster.com\n'
-                  'Website: www.wordmaster.com\n'
-                  'Follow us on social media for updates and tips!',
-            ),
-
-            const SizedBox(height: 24),
-
-            // Credits Section
-            _buildSection(
-              context,
-              'Credits',
-              'Word Master is developed with ❤️ using Flutter framework. Special thanks to all the developers for making this app possible.\n\n'
-                  'Icons by Material Design Icons\n'
-                  'Fonts by Google Fonts\n'
-                  'Built with Flutter & Dart',
-            ),
-
-            const SizedBox(height: 32),
-
-            // Footer
-            Center(
-              child: Column(
-                children: [
-                  Text(
-                    '© 2024 Word Master',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: ThemeColors.getSecondaryTextColor(context),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Made with 💜 for vocabulary enthusiasts',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: ThemeColors.getSecondaryTextColor(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-          ],
-        ),
+          ),
+          // Ad Banner at bottom
+          const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
+        ],
       ),
     );
   }

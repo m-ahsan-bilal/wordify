@@ -445,55 +445,55 @@ class AppLocalizationsAr extends AppLocalizations {
   String get levelUpMessage => 'ترقية المستوى! 🎉';
 
   @override
-  String get aboutWordMaster => 'About Word Master';
+  String get aboutWordMaster => 'حول سيد الكلمات';
 
   @override
-  String get version => 'Version 1.0.0';
+  String get version => 'الإصدار 1.0.0';
 
   @override
-  String get aboutTheApp => 'About the App';
+  String get aboutTheApp => 'حول التطبيق';
 
   @override
   String get aboutTheAppContent =>
-      'Word Master is your ultimate vocabulary companion designed to help you expand your word knowledge effortlessly. Whether you\'re a student preparing for exams, a professional looking to enhance your communication skills, or simply someone who loves learning new words, Word Master provides the perfect platform to build and maintain your vocabulary.';
+      'سيد الكلمات هو رفيقك المثالي لتعلم المفردات المصمم لمساعدتك على توسيع معرفتك بالكلمات بسهولة. سواء كنت طالبًا تستعد للامتحانات، أو محترفًا يتطلع إلى تحسين مهاراتك في التواصل، أو ببساطة شخصًا يحب تعلم كلمات جديدة، يوفر سيد الكلمات المنصة المثالية لبناء والحفاظ على مفرداتك.';
 
   @override
-  String get keyFeatures => 'Key Features';
+  String get keyFeatures => 'الميزات الرئيسية';
 
   @override
   String get keyFeaturesContent =>
-      '• Add and organize your vocabulary words\n• Track your learning progress with XP system\n• Maintain daily learning streaks\n• Review words with interactive quizzes\n• Listen to word pronunciations\n• Categorize words by difficulty levels\n• Dark and light theme support\n• Offline functionality with cloud sync';
+      '• إضافة وتنظيم كلماتك\n• تتبع تقدمك في التعلم مع نظام XP\n• الحفاظ على سلسلة التعلم اليومية\n• مراجعة الكلمات مع اختبارات تفاعلية\n• الاستماع إلى نطق الكلمات\n• تصنيف الكلمات حسب مستويات الصعوبة\n• دعم الوضع الداكن والفاتح\n• وظائف بدون اتصال مع مزامنة السحابة';
 
   @override
-  String get ourMission => 'Our Mission';
+  String get ourMission => 'مهمتنا';
 
   @override
   String get ourMissionContent =>
-      'We believe that a rich vocabulary is the foundation of effective communication. Our mission is to make vocabulary learning engaging, systematic, and rewarding. Through gamification elements like XP points, streaks, and levels, we transform the traditional approach to vocabulary building into an enjoyable journey of discovery.';
+      'نؤمن بأن المفردات الغنية هي أساس التواصل الفعال. مهمتنا هي جعل تعلم المفردات جذابًا ومنهجيًا ومجزياً. من خلال عناصر الألعاب مثل نقاط XP والسلاسل والمستويات، نحول النهج التقليدي لبناء المفردات إلى رحلة ممتعة من الاكتشاف.';
 
   @override
-  String get contactUs => 'Contact Us';
+  String get contactUs => 'اتصل بنا';
 
   @override
   String get contactUsContent =>
-      'We\'d love to hear from you! Whether you have feedback, suggestions, or need support, feel free to reach out to us.\n\nEmail: support@wordmaster.com\nWebsite: www.wordmaster.com\nFollow us on social media for updates and tips!';
+      'نحب أن نسمع منك! سواء كان لديك ملاحظات أو اقتراحات أو تحتاج إلى دعم، لا تتردد في التواصل معنا.\n\nالبريد الإلكتروني: support@wordmaster.com\nالموقع الإلكتروني: www.wordmaster.com\nتابعنا على وسائل التواصل الاجتماعي للحصول على التحديثات والنصائح!';
 
   @override
-  String get credits => 'Credits';
+  String get credits => 'الاعتمادات';
 
   @override
   String get creditsContent =>
-      'Word Master is developed with ❤️ using Flutter framework. Special thanks to all the developers for making this app possible.\n\nIcons by Material Design Icons\nFonts by Google Fonts\nBuilt with Flutter & Dart';
+      'تم تطوير سيد الكلمات بـ ❤️ باستخدام إطار Flutter. شكر خاص لجميع المطورين الذين جعلوا هذا التطبيق ممكنًا.\n\nالأيقونات من Material Design Icons\nالخطوط من Google Fonts\nمبني بـ Flutter & Dart';
 
   @override
-  String get copyright => '© 2024 Word Master';
+  String get copyright => '© 2024 سيد الكلمات';
 
   @override
-  String get madeWithLove => 'Made with 💜 for vocabulary enthusiasts';
+  String get madeWithLove => 'صُنع بـ 💜 لعشاق المفردات';
 
   @override
   String get backupDescription =>
-      'Backup your vocabulary data to Google Drive and restore it on any device. Your words, progress, streaks, and quiz history will be safely stored in the cloud.';
+      'قم بنسخ بيانات مفرداتك احتياطيًا إلى Google Drive واستعدها على أي جهاز. سيتم تخزين كلماتك وتقدمك وسلاسلك وتاريخ الاختبارات بأمان في السحابة.';
 
   @override
   String get tryAdjustingSearch => 'حاول تعديل البحث أو المرشحات';

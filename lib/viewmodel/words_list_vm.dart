@@ -125,44 +125,7 @@ class WordsListViewModel extends ChangeNotifier {
     }
   }
 
-  /// Calculate total XP from all words
-  int getTotalXP() {
-    int totalXP = 0;
-    
-    // Add XP from today's words
-    for (var wordMap in todaysWords) {
-      final word = Word.fromMap(wordMap);
-      totalXP += word.xp;
-    }
-    
-    // Add XP from yesterday's words
-    for (var wordMap in yesterdaysWords) {
-      final word = Word.fromMap(wordMap);
-      totalXP += word.xp;
-    }
-    
-    // Add XP from older words
-    olderWords.values.forEach((words) {
-      for (var wordMap in words) {
-        final word = Word.fromMap(wordMap);
-        totalXP += word.xp;
-      }
-    });
-    
-    return totalXP;
-  }
 
-  /// Get XP for a specific word map
-  int getWordXP(Map<String, dynamic> wordMap) {
-    final word = Word.fromMap(wordMap);
-    return word.xp;
-  }
-
-  /// Get level for a specific word map
-  int getWordLevel(Map<String, dynamic> wordMap) {
-    final word = Word.fromMap(wordMap);
-    return word.level;
-  }
 
   /// Check if a word is new
   bool isWordNew(Map<String, dynamic> wordMap) {

@@ -38,6 +38,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Disable minification to avoid issues with fonts and functionality
+            // Flutter's tree shaking will still optimize the code
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

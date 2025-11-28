@@ -9,6 +9,7 @@ import 'dart:ui';
 
 // Core Services
 import 'core/services/notification_service.dart';
+import 'core/services/admob_service.dart';
 import 'core/utils/theme_provider.dart';
 import 'core/utils/language_provider.dart';
 import 'l10n/app_localizations.dart';
@@ -16,25 +17,20 @@ import 'l10n/app_localizations.dart';
 // Data Sources
 import 'data/datasources/local/words_local_datasource.dart';
 import 'data/datasources/local/streak_local_datasource.dart';
-import 'data/datasources/local/xp_local_datasource.dart';
 import 'data/datasources/local/quiz_local_datasource.dart';
-import 'data/datasources/remote/xp_remote_datasource.dart';
 
 // Repositories
 import 'core/repositories/word_repository.dart';
 import 'core/repositories/streak_repository.dart';
-import 'core/repositories/xp_repository.dart';
 import 'core/repositories/quiz_repository.dart';
 import 'data/repositories/word_repository_impl.dart';
 import 'data/repositories/streak_repository_impl.dart';
-import 'data/repositories/xp_repository_impl.dart';
 import 'data/repositories/quiz_repository_impl.dart';
 
 // ViewModels
 import 'viewmodel/words_list_vm.dart';
 import 'viewmodel/add_word_vm.dart';
 import 'viewmodel/streak_vm.dart';
-import 'viewmodel/xp_vm.dart';
 import 'viewmodel/quiz_vm.dart';
 import 'viewmodel/settings_vm.dart';
 import 'viewmodel/backup_vm.dart';
@@ -111,22 +107,9 @@ void main() async {
   }
 
   try {
-    await XPLocalDatasource().init();
-  } catch (e) {
-    debugPrint('XPLocalDatasource init error: $e');
-  }
-
-  try {
     await QuizLocalDatasource().init();
   } catch (e) {
     debugPrint('QuizLocalDatasource init error: $e');
-  }
-
-  // Initialize remote data sources (placeholders for Firebase)
-  try {
-    await XPRemoteDatasource().init();
-  } catch (e) {
-    debugPrint('XPRemoteDatasource init error: $e');
   }
 
   // Initialize settings box (needed for SettingsViewModel)
@@ -141,11 +124,23 @@ void main() async {
   // ============================================================
   final wordRepository = WordRepositoryImpl();
   final streakRepository = StreakRepositoryImpl();
-  final xpRepository = XPRepositoryImpl(
-    localDatasource: XPLocalDatasource(),
-    remoteDatasource: XPRemoteDatasource(),
-  );
   final quizRepository = QuizRepositoryImpl();
+
+  // ============================================================
+  // ADMOB SERVICE INITIALIZATION (with error handling)
+  // ============================================================
+  final adMobService = AdMobService();
+  try {
+    await adMobService.init().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        debugPrint('AdMob service init timeout');
+      },
+    );
+  } catch (e) {
+    debugPrint('AdMob initialization error: $e');
+    // Continue app initialization even if AdMob fails
+  }
 
   // ============================================================
   // NOTIFICATION SERVICE INITIALIZATION (with error handling)
@@ -172,7 +167,7 @@ void main() async {
       );
 
       if (notificationsEnabled) {
-        debugPrint('✅ Notifications are enabled, subscribing to topics...');
+        debugPrint('Notifications are enabled, subscribing to topics...');
         // Note: Topic subscriptions are optional and can be enabled later
         // Subscribe to topics asynchronously (non-blocking) with longer timeout
         // This allows app to start even if subscriptions take time
@@ -182,12 +177,12 @@ void main() async {
               const Duration(seconds: 15),
               onTimeout: () {
                 debugPrint(
-                  '⏱️ Daily reminders subscription timeout (non-blocking)',
+                  'Daily reminders subscription timeout (non-blocking)',
                 );
               },
             )
             .catchError((e) {
-              debugPrint('❌ Failed to enable daily reminders: $e');
+              debugPrint('Failed to enable daily reminders: $e');
             });
 
         notificationService
@@ -195,53 +190,51 @@ void main() async {
             .timeout(
               const Duration(seconds: 15),
               onTimeout: () {
-                debugPrint(
-                  '⏱️ Streak alerts subscription timeout (non-blocking)',
-                );
+                debugPrint('Streak alerts subscription timeout (non-blocking)');
               },
             )
             .catchError((e) {
-              debugPrint('❌ Failed to enable streak alerts: $e');
+              debugPrint('Failed to enable streak alerts: $e');
             });
       } else {
         debugPrint(
-          '⏸️ Notifications are disabled in settings, skipping topic subscriptions',
+          'Notifications are disabled in settings, skipping topic subscriptions',
         );
       }
     } catch (e) {
       debugPrint(
-        '⚠️ Could not check notification settings, subscribing anyway: $e',
+        'Could not check notification settings, subscribing anyway: $e',
       );
       // Subscribe anyway if we can't check settings
       notificationService.enableDailyReminders(checkSettings: false).catchError(
         (e) {
-          debugPrint('❌ Failed to enable daily reminders: $e');
+          debugPrint('Failed to enable daily reminders: $e');
         },
       );
       notificationService.enableStreakAlerts().catchError((e) {
-        debugPrint('❌ Failed to enable streak alerts: $e');
+        debugPrint('Failed to enable streak alerts: $e');
       });
     }
   } catch (e) {
-    debugPrint('❌ Notification service init error: $e');
+    debugPrint('Notification service init error: $e');
     // Continue app initialization even if notifications fail
     // Try to subscribe anyway (might work if Firebase is partially initialized)
     notificationService.enableDailyReminders(checkSettings: false).catchError((
       e,
     ) {
-      debugPrint('❌ Failed to enable daily reminders after init error: $e');
+      debugPrint('Failed to enable daily reminders after init error: $e');
     });
     notificationService.enableStreakAlerts().catchError((e) {
-      debugPrint('❌ Failed to enable streak alerts after init error: $e');
+      debugPrint('Failed to enable streak alerts after init error: $e');
     });
   }
 
   // Verify FCM status after initialization
   try {
     final status = await notificationService.verifyFCMStatus();
-    debugPrint('📊 FCM Status Check: $status');
+    debugPrint('FCM Status Check: $status');
   } catch (e) {
-    debugPrint('⚠️ Could not verify FCM status: $e');
+    debugPrint('Could not verify FCM status: $e');
   }
 
   // ============================================================
@@ -286,7 +279,6 @@ void main() async {
         // Repositories (for direct access if needed)
         Provider<WordRepository>.value(value: wordRepository),
         Provider<StreakRepository>.value(value: streakRepository),
-        Provider<XPRepository>.value(value: xpRepository),
         Provider<QuizRepository>.value(value: quizRepository),
 
         // ViewModels
@@ -297,7 +289,6 @@ void main() async {
           create: (_) => AddWordViewModel(
             wordRepository: wordRepository,
             streakRepository: streakRepository,
-            xpRepository: xpRepository,
           ),
         ),
         ChangeNotifierProvider(
@@ -307,13 +298,7 @@ void main() async {
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => XPViewModel(xpRepository: xpRepository),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => QuizViewModel(
-            quizRepository: quizRepository,
-            xpRepository: xpRepository,
-          ),
+          create: (_) => QuizViewModel(quizRepository: quizRepository),
         ),
         ChangeNotifierProvider(create: (_) => SettingsViewModel()),
         ChangeNotifierProvider(create: (_) => BackupViewModel()),

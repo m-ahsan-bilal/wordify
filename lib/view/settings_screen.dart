@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/utils/app_colors.dart';
 import '../core/utils/theme_provider.dart';
 import '../core/utils/language_provider.dart';
+import 'widgets/ad_banner_widget.dart';
 import '../l10n/app_localizations.dart';
 
 /// Settings Screen - Centralized settings for the app
@@ -14,7 +15,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    
+
     return Scaffold(
       backgroundColor: ThemeColors.getBackgroundColor(context),
       appBar: AppBar(
@@ -36,34 +37,44 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
           // Theme Section
           _buildSectionHeader(context, l10n.theme),
           const SizedBox(height: 8),
           _buildThemeCard(context),
-          
+
           const SizedBox(height: 24),
-          
+
           // Language Section
           _buildSectionHeader(context, l10n.language),
           const SizedBox(height: 8),
           _buildLanguageCard(context),
-          
+
           const SizedBox(height: 24),
-          
+
           // About Section
           _buildSectionHeader(context, l10n.about),
           const SizedBox(height: 8),
           _buildAboutCard(context, l10n),
-          
+
           const SizedBox(height: 24),
-          
+
           // Backup Section
           _buildSectionHeader(context, l10n.backupRestore),
           const SizedBox(height: 8),
           _buildBackupCard(context, l10n),
+              ],
+            ),
+          ),
+          // Ad Banner at bottom
+          const AdBannerWidget(
+            margin: EdgeInsets.symmetric(vertical: 8),
+          ),
         ],
       ),
     );
@@ -115,7 +126,7 @@ class SettingsScreen extends StatelessWidget {
               themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
               color: ThemeColors.getPrimaryColor(context),
             ),
-            activeColor: ThemeColors.getPrimaryColor(context),
+            activeThumbColor: ThemeColors.getPrimaryColor(context),
           ),
         );
       },
@@ -127,7 +138,7 @@ class SettingsScreen extends StatelessWidget {
       builder: (context, languageProvider, _) {
         final l10n = AppLocalizations.of(context)!;
         final currentLocale = languageProvider.locale.languageCode;
-        
+
         return Container(
           decoration: BoxDecoration(
             color: ThemeColors.getCardColor(context),
@@ -250,16 +261,14 @@ class SettingsScreen extends StatelessWidget {
     AppLocalizations l10n,
   ) {
     final currentLocale = languageProvider.locale.languageCode;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: ThemeColors.getCardColor(context),
         title: Text(
           l10n.language,
-          style: TextStyle(
-            color: ThemeColors.getTextColor(context),
-          ),
+          style: TextStyle(color: ThemeColors.getTextColor(context)),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -267,9 +276,7 @@ class SettingsScreen extends StatelessWidget {
             return RadioListTile<String>(
               title: Text(
                 languageProvider.getLanguageName(locale.languageCode),
-                style: TextStyle(
-                  color: ThemeColors.getTextColor(context),
-                ),
+                style: TextStyle(color: ThemeColors.getTextColor(context)),
               ),
               value: locale.languageCode,
               groupValue: currentLocale,
@@ -287,4 +294,3 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
-

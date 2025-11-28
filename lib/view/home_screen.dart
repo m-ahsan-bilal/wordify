@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -6,16 +5,16 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:word_master/core/utils/app_colors.dart';
 import '../viewmodel/streak_vm.dart';
-import '../viewmodel/xp_vm.dart';
 import '../viewmodel/quiz_vm.dart';
 import '../viewmodel/words_list_vm.dart';
 import '../core/model/word_model.dart';
 import '../core/model/quiz_model.dart';
 import 'widgets/quiz_dialog.dart';
+import 'widgets/ad_banner_widget.dart';
+import 'widgets/reusable_loading_overlay.dart';
 import '../l10n/app_localizations.dart';
 
-/// Home Screen - Uses StreakViewModel, XPViewModel, QuizViewModel, and WordsListViewModel
-/// Follows MVVM pattern: UI talks only to ViewModels
+/// Home Screen - Uses StreakViewModel, QuizViewModel, and WordsListViewModel
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -31,10 +30,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final flutterTts = FlutterTts();
   List<Word> _allWords = [];
 
-  // Card stack state
+  // Word card state
   List<Map<String, dynamic>> _wordStack = [];
   int _currentCardIndex = 0;
   late AnimationController _cardAnimationController;
+
   @override
   void initState() {
     super.initState();
@@ -42,9 +42,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    // Delay initialization to ensure all providers are ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadData();
+      if (mounted) {
+        // Add a longer delay to ensure all providers and router are ready
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            _loadDataSafely();
+          }
+        });
+      }
     });
+  }
+
+  /// Safely load data with error handling and timeouts
+  Future<void> _loadDataSafely() async {
+    if (!mounted) return;
+
+    try {
+      await _loadData().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Data loading timeout');
+          if (mounted) {
+            setState(() {
+              isLoading = false;
+            });
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Error in _loadDataSafely: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -56,14 +90,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Only refresh if we've loaded initial data (to avoid duplicate loads)
-    // Removed automatic refresh to prevent infinite loops
-    // Data will be refreshed when explicitly needed (pull to refresh, etc.)
   }
 
   /// Refresh data without showing loading state (for background updates)
+  /// Also explicitly updates streak to ensure it's current after word addition
   Future<void> _refreshData() async {
     if (!mounted || isLoading) return;
+
+    // First, explicitly update streak (in case word was just added)
+    try {
+      final streakVm = context.read<StreakViewModel>();
+      await streakVm.updateStreak();
+    } catch (e) {
+      debugPrint('Error updating streak in refresh: $e');
+    }
+
+    // Then load all data
     await _loadData();
   }
 
@@ -81,61 +123,108 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     try {
-      final streakVm = context.read<StreakViewModel>();
-      // Validate streak first (will reset if broken, then load)
-      await streakVm.validateStreak();
+      if (!mounted) return;
 
-      final xpVm = context.read<XPViewModel>();
-      await xpVm.loadXP();
+      // Safely access ViewModels with error handling
+      StreakViewModel? streakVm;
+      WordsListViewModel? wordsListVm;
 
-      // Use WordsListViewModel to get all words sorted by time
-      final wordsListVm = context.read<WordsListViewModel>();
-      await wordsListVm.loadWords();
+      try {
+        streakVm = context.read<StreakViewModel>();
+      } catch (e) {
+        debugPrint('Error accessing StreakViewModel: $e');
+      }
 
-      // Get all words sorted by time (most recent first)
-      final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
+      try {
+        wordsListVm = context.read<WordsListViewModel>();
+      } catch (e) {
+        debugPrint('Error accessing WordsListViewModel: $e');
+      }
 
-      // Load all words for quiz generation
-      _allWords = allWordsSorted.map((w) => Word.fromMap(w)).toList();
-
-      if (mounted) {
-        // Check if words actually changed before updating
-        final wordsChanged =
-            _wordStack.length != allWordsSorted.length ||
-            _wordStack.isEmpty ||
-            !_areWordStacksEqual(_wordStack, allWordsSorted);
-
-        setState(() {
-          todaysWords = allWordsSorted; // Keep for compatibility
-          totalWordsCount = allWordsSorted.length;
-
-          // Always update word stack and reset to first card on refresh
-          _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
-          _currentCardIndex = 0; // Reset to first card when data is refreshed
-        });
-
-        // Debug: Print loaded words with their timestamps (only when changed)
-        if (wordsChanged) {
-          debugPrint(
-            'Loaded ${allWordsSorted.length} words (latest first): ${allWordsSorted.take(5).map((w) => '${w['word']} (${w['dateAdded']})').join(', ')}',
+      // Load data with timeouts to prevent hanging
+      if (streakVm != null) {
+        try {
+          await streakVm.validateStreak().timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              debugPrint('Streak validation timeout');
+            },
           );
-          debugPrint('Total words count: ${allWordsSorted.length}');
-          debugPrint(
-            'Word stack initialized with ${_wordStack.length} words, current index: $_currentCardIndex',
-          );
+        } catch (e) {
+          debugPrint('Error validating streak: $e');
         }
       }
-    } catch (e) {
-      debugPrint('Error loading data: $e');
+
+      if (!mounted) return;
+
+      if (wordsListVm != null) {
+        try {
+          await wordsListVm.loadWords().timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              debugPrint('Words load timeout');
+            },
+          );
+        } catch (e) {
+          debugPrint('Error loading words: $e');
+        }
+      }
+
+      if (!mounted) return;
+
+      // Get sorted words safely
+      List<Map<String, dynamic>> allWordsSorted = [];
+      if (wordsListVm != null) {
+        try {
+          allWordsSorted = wordsListVm.getAllWordsSortedByTime();
+          _allWords = allWordsSorted
+              .map((w) {
+                try {
+                  return Word.fromMap(w);
+                } catch (e) {
+                  debugPrint('Error parsing word: $e');
+                  return Word(
+                    word: '',
+                    meaning: '',
+                    synonyms: '',
+                    antonyms: '',
+                  );
+                }
+              })
+              .where((w) => w.word.isNotEmpty)
+              .toList();
+        } catch (e) {
+          debugPrint('Error getting sorted words: $e');
+        }
+      }
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${AppLocalizations.of(context)!.failedToLoadData}: ${e.toString()}',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        setState(() {
+          todaysWords = allWordsSorted;
+          totalWordsCount = allWordsSorted.length;
+          _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
+          _currentCardIndex = 0;
+        });
+
+        debugPrint(
+          'Loaded ${allWordsSorted.length} words, current index: $_currentCardIndex',
         );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error loading data: $e');
+      debugPrint('Stack trace: $stackTrace');
+      if (mounted) {
+        try {
+          final errorMessage = AppLocalizations.of(context)!.failedToLoadData;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$errorMessage: ${e.toString()}'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        } catch (e2) {
+          debugPrint('Error showing error message: $e2');
+        }
       }
     } finally {
       if (mounted) {
@@ -151,37 +240,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       await flutterTts.speak(text);
     } catch (e) {
-      // Handle TTS errors gracefully
       debugPrint('TTS Error: $e');
     }
   }
 
   /// Handle swipe gesture to start quiz
   Future<void> _handleSwipeQuiz(QuizType type) async {
+    if (!mounted) return;
+
+    final noWordsMessage = AppLocalizations.of(
+      context,
+    )!.noWordsAvailableForQuiz;
+
     if (_allWords.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.noWordsAvailableForQuiz),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(noWordsMessage),
+            backgroundColor: AppColors.lightGreen,
+          ),
+        );
+      }
       return;
     }
 
-    // Get current word from card stack
     if (_wordStack.isEmpty || _currentCardIndex >= _wordStack.length) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.noWordsAvailableForQuiz),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(noWordsMessage),
+            backgroundColor: AppColors.lightGreen,
+          ),
+        );
+      }
       return;
     }
 
     final currentWordData = _wordStack[_currentCardIndex];
     final currentWord = Word.fromMap(currentWordData);
 
+    if (!mounted) return;
     final quizVm = context.read<QuizViewModel>();
     final question = await quizVm.generateQuestion(
       currentWord,
@@ -189,8 +287,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _allWords,
     );
 
+    if (!mounted) return;
     if (question == null) {
-      if (quizVm.error != null) {
+      if (quizVm.error != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(quizVm.error!), backgroundColor: Colors.red),
         );
@@ -198,76 +297,73 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return;
     }
 
-    // Show quiz dialog
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => QuizDialog(question: question),
     );
 
-    // Refresh XP if answer was correct
-    if (result == true) {
-      final xpVm = context.read<XPViewModel>();
-      await xpVm.loadXP();
+    // Quiz completed
+    if (result == true && mounted) {
+      // Refresh data if needed
     }
   }
 
   /// Move to next card (swipe down)
   void _moveToNextCard() {
-    if (_wordStack.isEmpty) return;
+    if (!mounted || _wordStack.isEmpty) return;
 
     if (_currentCardIndex < _wordStack.length - 1) {
-      // Move to next word in the list
-      setState(() {
-        _currentCardIndex++;
-      });
+      if (mounted) {
+        setState(() {
+          _currentCardIndex++;
+        });
+      }
       _cardAnimationController.forward(from: 0.0);
-      debugPrint(
-        'Moved to next card. Index: $_currentCardIndex, Word: ${_wordStack[_currentCardIndex]['word']}',
-      );
+      debugPrint('Moved to next card. Index: $_currentCardIndex');
     } else if (_currentCardIndex == _wordStack.length - 1) {
-      // Move past the last card to show "no more words"
-      setState(() {
-        _currentCardIndex++;
-      });
+      if (mounted) {
+        setState(() {
+          _currentCardIndex++;
+        });
+      }
       _cardAnimationController.forward(from: 0.0);
       debugPrint('Reached end of word stack');
     }
   }
 
-  /// Check if two word stacks are equal
-  bool _areWordStacksEqual(
-    List<Map<String, dynamic>> stack1,
-    List<Map<String, dynamic>> stack2,
-  ) {
-    if (stack1.length != stack2.length) return false;
-    for (int i = 0; i < stack1.length; i++) {
-      final word1 = stack1[i]['word']?.toString() ?? '';
-      final word2 = stack2[i]['word']?.toString() ?? '';
-      if (word1 != word2) return false;
-    }
-    return true;
-  }
-
   /// Refresh cards to show most recent words
   Future<void> _refreshCards() async {
-    // Reload words from ViewModel
-    final wordsListVm = context.read<WordsListViewModel>();
-    await wordsListVm.loadWords();
+    if (!mounted) return;
 
-    // Get updated words
-    final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
+    try {
+      final wordsListVm = context.read<WordsListViewModel>();
+      await wordsListVm.loadWords();
+      if (!mounted) return;
 
-    // Also update _allWords for quiz generation
-    _allWords = allWordsSorted.map((w) => Word.fromMap(w)).toList();
+      final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
+      _allWords = allWordsSorted.map((w) => Word.fromMap(w)).toList();
 
-    setState(() {
-      _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
-      _currentCardIndex = 0; // Reset to first card
-      todaysWords = allWordsSorted; // Update for compatibility
-      totalWordsCount = allWordsSorted.length;
-    });
-    _cardAnimationController.forward(from: 0.0);
+      if (mounted) {
+        setState(() {
+          _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
+          _currentCardIndex = 0;
+          todaysWords = allWordsSorted;
+          totalWordsCount = allWordsSorted.length;
+        });
+        _cardAnimationController.forward(from: 0.0);
+      }
+    } catch (e) {
+      debugPrint('Error refreshing cards: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to refresh: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -301,11 +397,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop(true);
-                  SystemNavigator.pop(); // Exit the app
+                  SystemNavigator.pop();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: AppColors.darkGray,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -358,9 +454,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.local_fire_department,
-                        color: Colors.orange,
+                        color: AppColors.fireOrange,
                         size: 20,
                       ),
                       const SizedBox(width: 4),
@@ -376,46 +472,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
               },
             ),
-            // Settings Button
             IconButton(
               icon: Icon(
                 Icons.settings,
                 color: ThemeColors.getTextColor(context),
               ),
-              onPressed: () {
-                context.push('/settings');
-              },
+              onPressed: () => context.push('/settings'),
             ),
           ],
         ),
-        body: Stack(
+        body: Column(
           children: [
-            RefreshIndicator(
-              onRefresh: _loadData,
-              child: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    // Tinder-style Card Stack
-                    SizedBox(height: 500, child: _buildCardStack()),
-
-                    const SizedBox(height: 24),
-                  ],
-                ),
+            Expanded(
+              child: Stack(
+                children: [
+                  RefreshIndicator(
+                    onRefresh: _loadData,
+                    child: SafeArea(
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          _buildCardStack(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (isLoading)
+                    ReusableLoadingOverlay(
+                      isLoading: true,
+                      child: const SizedBox.shrink(),
+                    ),
+                  _buildCurvedFABs(),
+                ],
               ),
             ),
-            // Loading overlay
-            if (isLoading)
-              Container(
-                color: Colors.black.withOpacity(0.3),
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-            // Curved Floating Action Buttons
-            _buildCurvedFABs(),
+            // Ad Banner at bottom
+            const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
           ],
         ),
-      ), // End of Scaffold
-    ); // End of PopScope
+      ),
+    );
   }
 
   Widget _buildCardStack() {
@@ -423,174 +520,229 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return _buildEmptyCardState();
     }
 
-    // Check if we've reached the last card
-    if (_currentCardIndex >= _wordStack.length) {
+    if (_currentCardIndex >= _wordStack.length || _currentCardIndex < 0) {
       return _buildNoMoreWordsState();
     }
 
-    // Only show the current card - clean single card view
+    // Safety check for word data
+    final wordData = _wordStack[_currentCardIndex];
+    if (wordData.isEmpty) {
+      return _buildEmptyCardState();
+    }
+
+    // Show single word card
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: _buildWordCard(_wordStack[_currentCardIndex], isTopCard: true),
+        child: _buildWordCard(wordData),
       ),
     );
   }
 
-  Widget _buildWordCard(
-    Map<String, dynamic> wordData, {
-    required bool isTopCard,
-  }) {
+  Widget _buildWordCard(Map<String, dynamic> wordData) {
+    // Extract word data
     final wordText = wordData['word']?.toString() ?? '';
     final meaning = wordData['meaning']?.toString() ?? '';
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onVerticalDragEnd: (details) {
-        if (!isTopCard) return;
-        // Swipe Up - Quiz (Meaning)
+        // Swipe Up - Quiz (Meaning) - negative velocity means upward
         if (details.primaryVelocity != null &&
-            details.primaryVelocity! < -300) {
+            details.primaryVelocity! < -200) {
           _handleSwipeQuiz(QuizType.meaning);
         }
-        // Swipe Down - Next Card
-        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+        // Swipe Down - Next Card - positive velocity means downward
+        else if (details.primaryVelocity != null &&
+            details.primaryVelocity! > 200) {
           _moveToNextCard();
         }
       },
       onHorizontalDragEnd: (details) {
-        if (!isTopCard) return;
-        // Swipe Left - Quiz (Synonym)
+        // Swipe Left - Quiz (Synonym) - negative velocity means leftward
         if (details.primaryVelocity != null &&
-            details.primaryVelocity! < -300) {
+            details.primaryVelocity! < -200) {
           _handleSwipeQuiz(QuizType.synonym);
         }
-        // Swipe Right - Quiz (Antonym)
-        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+        // Swipe Right - Quiz (Antonym) - positive velocity means rightward
+        else if (details.primaryVelocity != null &&
+            details.primaryVelocity! > 200) {
           _handleSwipeQuiz(QuizType.antonym);
         }
       },
-      child: Container(
-        width: double.infinity,
+      child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380, minHeight: 400),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            // Soft, subtle elevation
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: SizedBox(
-            height: 400,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with refresh button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.todayWords,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: ThemeColors.getCardColor(context),
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black.withValues(alpha: 0.4)
+                    : Colors.black.withValues(alpha: 0.15),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: SizedBox(
+              height: 400,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with refresh button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.todayWords,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: ThemeColors.getTextColor(context),
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.refresh_rounded,
-                        color: Colors.grey[400],
-                        size: 20,
+                      IconButton(
+                        icon: Icon(
+                          Icons.refresh_rounded,
+                          color: ThemeColors.getSecondaryTextColor(context),
+                          size: 20,
+                        ),
+                        onPressed: _refreshCards,
+                        tooltip: 'Refresh to most recent',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
-                      onPressed: _refreshCards,
-                      tooltip: 'Refresh to most recent',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                // Word - Large, bold, prominent
-                Text(
-                  wordText.isNotEmpty
-                      ? wordText
-                      : AppLocalizations.of(context)!.noWordsToday,
-                  style: TextStyle(
-                    fontSize: 42,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[900],
-                    height: 1.2,
-                    letterSpacing: -0.5,
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                // Meaning - Simple description
-                Text(
-                  meaning.isNotEmpty
-                      ? meaning
-                      : AppLocalizations.of(context)!.addFirstWord,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                    height: 1.5,
+                  const SizedBox(height: 24),
+                  // Word
+                  Text(
+                    wordText.isNotEmpty
+                        ? wordText
+                        : AppLocalizations.of(context)!.noWordsToday,
+                    style: TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeColors.getTextColor(context),
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                // Listen Button - Simple, clean
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: wordText.isNotEmpty
-                        ? () => _speak(wordText)
-                        : null,
-                    icon: Icon(
-                      Icons.volume_up_rounded,
-                      size: 20,
-                      color: wordText.isNotEmpty
-                          ? ThemeColors.getPrimaryColor(context)
-                          : Colors.grey[400],
+                  const SizedBox(height: 12),
+                  // Meaning
+                  Text(
+                    meaning.isNotEmpty
+                        ? meaning
+                        : AppLocalizations.of(context)!.addFirstWord,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: ThemeColors.getSecondaryTextColor(context),
+                      height: 1.5,
                     ),
-                    label: Text(
-                      AppLocalizations.of(context)!.listen,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                  ),
+                  const SizedBox(height: 24),
+                  // Listen Button - FloatingActionButton style
+                  Center(
+                    child: FloatingActionButton.extended(
+                      heroTag: 'listen_button',
+                      onPressed: wordText.isNotEmpty
+                          ? () => _speak(wordText)
+                          : null,
+                      backgroundColor: ThemeColors.getButtonColor(context),
+                      foregroundColor: AppColors.darkGray,
+                      icon: const Icon(Icons.volume_up_rounded, size: 20),
+                      label: Text(
+                        AppLocalizations.of(context)!.listen,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: ThemeColors.getPrimaryColor(context),
-                      side: BorderSide(
-                        color: wordText.isNotEmpty
-                            ? ThemeColors.getPrimaryColor(
-                                context,
-                              ).withOpacity(0.3)
-                            : Colors.grey[300]!,
-                        width: 1.5,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 18,
-                        horizontal: 24,
-                      ),
+                      elevation: 4,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  // Swipe instructions
+                  if (wordText.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildSwipeHint(
+                          context: context,
+                          icon: Icons.arrow_upward_rounded,
+                          label: 'Quiz',
+                          color: ThemeColors.getButtonColor(context),
+                        ),
+                        const SizedBox(width: 16),
+                        _buildSwipeHint(
+                          context: context,
+                          icon: Icons.arrow_back_rounded,
+                          label: 'Synonym',
+                          color: ThemeColors.getButtonColor(context),
+                        ),
+                        const SizedBox(width: 16),
+                        _buildSwipeHint(
+                          context: context,
+                          icon: Icons.arrow_forward_rounded,
+                          label: 'Antonym',
+                          color: ThemeColors.getButtonColor(context),
+                        ),
+                        const SizedBox(width: 16),
+                        _buildSwipeHint(
+                          context: context,
+                          icon: Icons.arrow_downward_rounded,
+                          label: 'Next',
+                          color: ThemeColors.getButtonColor(context),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSwipeHint({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: ThemeColors.getSecondaryTextColor(context),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -605,7 +757,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -658,7 +810,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 25,
               offset: const Offset(0, 10),
               spreadRadius: 2,
@@ -670,7 +822,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Header with refresh button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -678,7 +829,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     AppLocalizations.of(context)!.todayWords,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: ThemeColors.getSecondaryTextColor(context),
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.5,
                     ),
@@ -686,7 +837,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   IconButton(
                     icon: Icon(
                       Icons.refresh_rounded,
-                      color: Colors.grey[400],
+                      color: ThemeColors.getSecondaryTextColor(context),
                       size: 20,
                     ),
                     onPressed: _refreshCards,
@@ -696,7 +847,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(height: 32),
               Icon(
                 Icons.check_circle_outline,
                 size: 64,
@@ -720,24 +871,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const Spacer(),
-              ElevatedButton.icon(
+              const SizedBox(height: 32),
+              FloatingActionButton.extended(
+                heroTag: 'add_word_empty',
                 onPressed: () async {
                   await context.push('/add-word');
                   _refreshData();
                 },
+                backgroundColor: ThemeColors.getButtonColor(context),
+                foregroundColor: AppColors.darkGray,
                 icon: const Icon(Icons.add),
                 label: Text(AppLocalizations.of(context)!.addWord),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ThemeColors.getPrimaryColor(context),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ],
@@ -756,18 +903,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Review Button (top)
             _buildCurvedFAB(
+              heroTag: 'review_fab',
               icon: Icons.access_time_rounded,
-              label: 'Review',
+              label: AppLocalizations.of(context)!.review,
               onTap: () async {
                 await context.push('/list');
                 _refreshData();
               },
             ),
             const SizedBox(height: 16),
-            // Add Word Button (bottom)
             _buildCurvedFAB(
+              heroTag: 'add_word_fab',
               icon: Icons.add_rounded,
               label: AppLocalizations.of(context)!.addWord,
               onTap: () async {
@@ -782,54 +929,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildCurvedFAB({
+    required String heroTag,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(28),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                ThemeColors.getPrimaryColor(context),
-                ThemeColors.getPrimaryColor(context).withOpacity(0.8),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: ThemeColors.getPrimaryColor(context).withOpacity(0.4),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 22),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
+    return FloatingActionButton.extended(
+      heroTag: heroTag,
+      onPressed: onTap,
+      backgroundColor: ThemeColors.getButtonColor(context),
+      foregroundColor: AppColors.darkGray,
+      icon: Icon(icon, size: 22),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
         ),
       ),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
     );
   }
 }

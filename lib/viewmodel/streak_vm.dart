@@ -53,40 +53,54 @@ class StreakViewModel extends ChangeNotifier {
 
   /// Update streak based on today's activity
   /// This should be called when a word is added or when checking streak status
+  /// IMPORTANT: Always checks current activity before updating
   Future<void> updateStreak() async {
     try {
-      // Check if user has added words today
+      // Check if user has added words today (timezone-aware check)
       final todaysWords = await _wordRepository.getTodaysWords();
       final hasActivityToday = todaysWords.isNotEmpty;
 
+      debugPrint('📊 Updating streak - Has activity today: $hasActivityToday (${todaysWords.length} words)');
+
       // Update streak with today's activity status
+      // This will increment if consecutive, start new if broken, or maintain if same day
       await _streakRepository.updateStreak(hasActivityToday: hasActivityToday);
 
       // Reload streak data to get updated values
       await loadStreak();
+      
+      debugPrint('✅ Streak updated - Current streak: ${_streak.currentStreak}');
     } catch (e) {
-      debugPrint('Failed to update streak: $e');
+      debugPrint('❌ Failed to update streak: $e');
       _error = 'Failed to update streak';
       _safeNotify();
     }
   }
 
   /// Validate and update streak on app load
-  /// This ensures streak is reset if user missed days
+  /// This ensures streak is reset if user missed days, but preserves streak if activity today
   Future<void> validateStreak() async {
     try {
-      // First, check if streak should be reset (no activity for >1 day)
-      // This is done automatically in getStreak(), but we also update based on today's activity
+      // First, get current streak (this validates and may reset if >1 day passed)
+      final currentStreak = await _streakRepository.getStreak();
+      
+      // Then check if user has activity TODAY (timezone-aware)
       final todaysWords = await _wordRepository.getTodaysWords();
       final hasActivityToday = todaysWords.isNotEmpty;
 
-      // Update streak (will reset if broken, increment if consecutive)
+      debugPrint('🔍 Validating streak - Current: ${currentStreak.currentStreak}, Has activity today: $hasActivityToday');
+
+      // Update streak based on today's activity
+      // This is crucial: even if validation reset streak, if user has activity today,
+      // it will start a new streak or continue existing one
       await _streakRepository.updateStreak(hasActivityToday: hasActivityToday);
 
-      // Reload to get validated streak
+      // Reload to get validated and updated streak
       await loadStreak();
+      
+      debugPrint('✅ Streak validated - Final streak: ${_streak.currentStreak}');
     } catch (e) {
-      debugPrint('Failed to validate streak: $e');
+      debugPrint('❌ Failed to validate streak: $e');
       _error = 'Failed to validate streak';
       _safeNotify();
     }

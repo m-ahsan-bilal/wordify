@@ -446,55 +446,56 @@ class AppLocalizationsHi extends AppLocalizations {
   String get levelUpMessage => 'स्तर बढ़ा! 🎉';
 
   @override
-  String get aboutWordMaster => 'About Word Master';
+  String get aboutWordMaster => 'वर्ड मास्टर के बारे में';
 
   @override
-  String get version => 'Version 1.0.0';
+  String get version => 'संस्करण 1.0.0';
 
   @override
-  String get aboutTheApp => 'About the App';
+  String get aboutTheApp => 'ऐप के बारे में';
 
   @override
   String get aboutTheAppContent =>
-      'Word Master is your ultimate vocabulary companion designed to help you expand your word knowledge effortlessly. Whether you\'re a student preparing for exams, a professional looking to enhance your communication skills, or simply someone who loves learning new words, Word Master provides the perfect platform to build and maintain your vocabulary.';
+      'वर्ड मास्टर आपका अंतिम शब्दावली साथी है जो आपकी शब्द ज्ञान को आसानी से विस्तारित करने में मदद करने के लिए डिज़ाइन किया गया है। चाहे आप परीक्षा की तैयारी करने वाले छात्र हों, अपने संचार कौशल को बढ़ाने की तलाश करने वाले पेशेवर हों, या बस कोई ऐसा व्यक्ति जो नए शब्द सीखना पसंद करता हो, वर्ड मास्टर आपकी शब्दावली बनाने और बनाए रखने के लिए सही मंच प्रदान करता है।';
 
   @override
-  String get keyFeatures => 'Key Features';
+  String get keyFeatures => 'मुख्य विशेषताएं';
 
   @override
   String get keyFeaturesContent =>
-      '• Add and organize your vocabulary words\n• Track your learning progress with XP system\n• Maintain daily learning streaks\n• Review words with interactive quizzes\n• Listen to word pronunciations\n• Categorize words by difficulty levels\n• Dark and light theme support\n• Offline functionality with cloud sync';
+      '• अपने शब्दावली शब्दों को जोड़ें और व्यवस्थित करें\n• XP सिस्टम के साथ अपनी सीखने की प्रगति को ट्रैक करें\n• दैनिक सीखने की स्ट्रीक बनाए रखें\n• इंटरैक्टिव क्विज़ के साथ शब्दों की समीक्षा करें\n• शब्द उच्चारण सुनें\n• कठिनाई स्तरों द्वारा शब्दों को वर्गीकृत करें\n• डार्क और लाइट थीम सपोर्ट\n• क्लाउड सिंक के साथ ऑफलाइन कार्यक्षमता';
 
   @override
-  String get ourMission => 'Our Mission';
+  String get ourMission => 'हमारा मिशन';
 
   @override
   String get ourMissionContent =>
-      'We believe that a rich vocabulary is the foundation of effective communication. Our mission is to make vocabulary learning engaging, systematic, and rewarding. Through gamification elements like XP points, streaks, and levels, we transform the traditional approach to vocabulary building into an enjoyable journey of discovery.';
+      'हम मानते हैं कि एक समृद्ध शब्दावली प्रभावी संचार की नींव है। हमारा मिशन शब्दावली सीखने को आकर्षक, व्यवस्थित और फायदेमंद बनाना है। XP अंक, स्ट्रीक और स्तरों जैसे गेमिफिकेशन तत्वों के माध्यम से, हम शब्दावली निर्माण के पारंपरिक दृष्टिकोण को खोज की एक सुखद यात्रा में बदल देते हैं।';
 
   @override
-  String get contactUs => 'Contact Us';
+  String get contactUs => 'हमसे संपर्क करें';
 
   @override
   String get contactUsContent =>
-      'We\'d love to hear from you! Whether you have feedback, suggestions, or need support, feel free to reach out to us.\n\nEmail: support@wordmaster.com\nWebsite: www.wordmaster.com\nFollow us on social media for updates and tips!';
+      'हम आपसे सुनना पसंद करेंगे! चाहे आपके पास प्रतिक्रिया, सुझाव हों, या आपको सहायता की आवश्यकता हो, बेझिझक हमसे संपर्क करें।\n\nईमेल: support@wordmaster.com\nवेबसाइट: www.wordmaster.com\nअपडेट और टिप्स के लिए सोशल मीडिया पर हमें फॉलो करें!';
 
   @override
-  String get credits => 'Credits';
+  String get credits => 'क्रेडिट';
 
   @override
   String get creditsContent =>
-      'Word Master is developed with ❤️ using Flutter framework. Special thanks to all the developers for making this app possible.\n\nIcons by Material Design Icons\nFonts by Google Fonts\nBuilt with Flutter & Dart';
+      'वर्ड मास्टर Flutter फ्रेमवर्क का उपयोग करके ❤️ के साथ विकसित किया गया है। इस ऐप को संभव बनाने वाले सभी डेवलपर्स को विशेष धन्यवाद।\n\nMaterial Design Icons द्वारा आइकन\nGoogle Fonts द्वारा फॉन्ट\nFlutter & Dart के साथ निर्मित';
 
   @override
-  String get copyright => '© 2024 Word Master';
+  String get copyright => '© 2024 वर्ड मास्टर';
 
   @override
-  String get madeWithLove => 'Made with 💜 for vocabulary enthusiasts';
+  String get madeWithLove =>
+      'शब्दावली उत्साही लोगों के लिए 💜 के साथ बनाया गया';
 
   @override
   String get backupDescription =>
-      'Backup your vocabulary data to Google Drive and restore it on any device. Your words, progress, streaks, and quiz history will be safely stored in the cloud.';
+      'अपने शब्दावली डेटा को Google Drive में बैकअप करें और इसे किसी भी डिवाइस पर पुनर्स्थापित करें। आपके शब्द, प्रगति, स्ट्रीक और क्विज़ इतिहास सुरक्षित रूप से क्लाउड में संग्रहीत किए जाएंगे।';
 
   @override
   String get tryAdjustingSearch =>
