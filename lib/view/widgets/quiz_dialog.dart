@@ -65,10 +65,6 @@ class _QuizDialogState extends State<QuizDialog>
     if (_isCorrect) {
       _animationController.forward(from: 0.0);
     }
-
-    // Show feedback and close after shorter delay
-    await Future.delayed(const Duration(milliseconds: 1500));
-    _closeDialog(_isCorrect);
   }
 
   void _closeDialog([bool? result]) {
@@ -224,7 +220,7 @@ class _QuizDialogState extends State<QuizDialog>
     final iconColor = _getOptionIconColor(option);
 
     return GestureDetector(
-      onTap: () => _handleAnswerSelection(option),
+      onTap: _isAnswered ? null : () => _handleAnswerSelection(option),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -266,7 +262,9 @@ class _QuizDialogState extends State<QuizDialog>
             decoration: BoxDecoration(
               color: _isCorrect
                   ? ThemeColors.getPrimaryColor(context).withValues(alpha: 0.15)
-                  : ThemeColors.getBackgroundColor(context).withValues(alpha: 0.5),
+                  : ThemeColors.getBackgroundColor(
+                      context,
+                    ).withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _isCorrect

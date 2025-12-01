@@ -107,7 +107,7 @@ class WordsListViewModel extends ChangeNotifier {
   Future<void> deleteWord(int index) async {
     try {
       await _wordRepository.deleteWord(index);
-      await loadWords(); // Reload after deletion
+      await loadWords();
     } catch (e) {
       debugPrint('Error deleting word: $e');
       _error = 'Failed to delete word';
@@ -124,8 +124,6 @@ class WordsListViewModel extends ChangeNotifier {
       return 0;
     }
   }
-
-
 
   /// Check if a word is new
   bool isWordNew(Map<String, dynamic> wordMap) {
@@ -149,25 +147,25 @@ class WordsListViewModel extends ChangeNotifier {
   /// This combines all words from today, yesterday, and older words
   List<Map<String, dynamic>> getAllWordsSortedByTime() {
     List<Map<String, dynamic>> allWords = [];
-    
+
     // Add today's words
     allWords.addAll(todaysWords);
-    
+
     // Add yesterday's words
     allWords.addAll(yesterdaysWords);
-    
+
     // Add older words
     olderWords.values.forEach((words) => allWords.addAll(words));
-    
+
     // Sort by dateAdded (most recent first)
     allWords.sort((a, b) {
       final dateA = a['dateAdded']?.toString();
       final dateB = b['dateAdded']?.toString();
-      
+
       if (dateA == null && dateB == null) return 0;
       if (dateA == null) return 1;
       if (dateB == null) return -1;
-      
+
       try {
         final parsedDateA = DateTime.parse(dateA);
         final parsedDateB = DateTime.parse(dateB);
@@ -177,7 +175,7 @@ class WordsListViewModel extends ChangeNotifier {
         return 0;
       }
     });
-    
+
     return allWords;
   }
 

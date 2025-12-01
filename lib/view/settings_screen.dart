@@ -43,38 +43,36 @@ class SettingsScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-          // Theme Section
-          _buildSectionHeader(context, l10n.theme),
-          const SizedBox(height: 8),
-          _buildThemeCard(context),
+                // Theme Section
+                _buildSectionHeader(context, l10n.theme),
+                const SizedBox(height: 8),
+                _buildThemeCard(context),
 
-          const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-          // Language Section
-          _buildSectionHeader(context, l10n.language),
-          const SizedBox(height: 8),
-          _buildLanguageCard(context),
+                // Language Section
+                _buildSectionHeader(context, l10n.language),
+                const SizedBox(height: 8),
+                _buildLanguageCard(context),
 
-          const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-          // About Section
-          _buildSectionHeader(context, l10n.about),
-          const SizedBox(height: 8),
-          _buildAboutCard(context, l10n),
+                // About Section
+                _buildSectionHeader(context, l10n.about),
+                const SizedBox(height: 8),
+                _buildAboutCard(context, l10n),
 
-          const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-          // Backup Section
-          _buildSectionHeader(context, l10n.backupRestore),
-          const SizedBox(height: 8),
-          _buildBackupCard(context, l10n),
+                // Backup Section
+                // _buildSectionHeader(context, l10n.backupRestore),
+                // const SizedBox(height: 8),
+                // _buildBackupCard(context, l10n),
               ],
             ),
           ),
           // Ad Banner at bottom
-          const AdBannerWidget(
-            margin: EdgeInsets.symmetric(vertical: 8),
-          ),
+          const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
         ],
       ),
     );

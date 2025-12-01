@@ -42,22 +42,28 @@ class AdMobService {
     }
 
     try {
-      debugPrint('Initializing AdMob service with App ID: $appId');
-      // Initialize with timeout to prevent hanging
-      await MobileAds.instance.initialize().timeout(
-        const Duration(seconds: 10),
+      debugPrint('🚀 Initializing AdMob service with App ID: $appId');
+      // Initialize with app ID and timeout to prevent hanging
+      final initResponse = await MobileAds.instance.initialize().timeout(
+        const Duration(seconds: 15),
         onTimeout: () {
           debugPrint('⚠️ AdMob initialization timeout');
           throw TimeoutException('AdMob initialization timeout');
         },
       );
+      
+      // Check initialization status
+      debugPrint('📊 AdMob initialization response: ${initResponse.adapterStatuses}');
+      
       _initialized = true;
       debugPrint('✅ AdMob service initialized successfully');
-      debugPrint('📱 Using test ad unit IDs for banner ads (safe for testing)');
+      debugPrint('📱 Using ${_isTestMode ? "test" : "production"} ad unit IDs for banner ads');
+      debugPrint('📝 Banner Ad Unit ID: $bannerAdUnitId');
       debugPrint('📝 Note: Each AdBannerWidget creates its own BannerAd instance');
       debugPrint('   (Google Mobile Ads requires separate instances per AdWidget)');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Error initializing AdMob: $e');
+      debugPrint('Stack trace: $stackTrace');
       _initialized = false;
       // Don't throw - allow app to continue without ads
     }

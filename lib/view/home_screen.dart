@@ -42,15 +42,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    // Delay initialization to ensure all providers are ready
+    // Load data immediately without delay for faster UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // Add a longer delay to ensure all providers and router are ready
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) {
-            _loadDataSafely();
-          }
-        });
+        _loadDataSafely();
       }
     });
   }
@@ -118,6 +113,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _loadData() async {
     if (!mounted) return;
 
+    // Check if data is already loaded from preload
+    try {
+      final wordsListVm = context.read<WordsListViewModel>();
+      if (wordsListVm.todaysWords.isNotEmpty || 
+          wordsListVm.getAllWordsSortedByTime().isNotEmpty) {
+        // Data already loaded, just update UI
+        _updateUIFromViewModels();
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error checking preloaded data: $e');
+    }
+
     setState(() {
       isLoading = true;
     });
@@ -172,44 +180,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       if (!mounted) return;
 
-      // Get sorted words safely
-      List<Map<String, dynamic>> allWordsSorted = [];
-      if (wordsListVm != null) {
-        try {
-          allWordsSorted = wordsListVm.getAllWordsSortedByTime();
-          _allWords = allWordsSorted
-              .map((w) {
-                try {
-                  return Word.fromMap(w);
-                } catch (e) {
-                  debugPrint('Error parsing word: $e');
-                  return Word(
-                    word: '',
-                    meaning: '',
-                    synonyms: '',
-                    antonyms: '',
-                  );
-                }
-              })
-              .where((w) => w.word.isNotEmpty)
-              .toList();
-        } catch (e) {
-          debugPrint('Error getting sorted words: $e');
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          todaysWords = allWordsSorted;
-          totalWordsCount = allWordsSorted.length;
-          _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
-          _currentCardIndex = 0;
-        });
-
-        debugPrint(
-          'Loaded ${allWordsSorted.length} words, current index: $_currentCardIndex',
-        );
-      }
+      // Update UI from ViewModels
+      _updateUIFromViewModels();
     } catch (e, stackTrace) {
       debugPrint('Error loading data: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -232,6 +204,62 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           isLoading = false;
         });
       }
+    }
+  }
+
+  /// Update UI from ViewModels (used when data is already loaded)
+  void _updateUIFromViewModels() {
+    if (!mounted) return;
+
+    try {
+      final wordsListVm = context.read<WordsListViewModel>();
+      
+      // Get today's words first
+      final todaysWordsList = wordsListVm.todaysWords;
+      
+      // Get all words sorted by time (for fallback and quiz)
+      final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
+      
+      // If user has words added today, use those; otherwise use last added words
+      List<Map<String, dynamic>> wordsToDisplay = [];
+      if (todaysWordsList.isNotEmpty) {
+        wordsToDisplay = List<Map<String, dynamic>>.from(todaysWordsList);
+      } else {
+        // No words added today, show last added words
+        wordsToDisplay = List<Map<String, dynamic>>.from(allWordsSorted);
+      }
+      
+      _allWords = allWordsSorted
+          .map((w) {
+            try {
+              return Word.fromMap(w);
+            } catch (e) {
+              debugPrint('Error parsing word: $e');
+              return Word(
+                word: '',
+                meaning: '',
+                synonyms: '',
+                antonyms: '',
+              );
+            }
+          })
+          .where((w) => w.word.isNotEmpty)
+          .toList();
+
+      if (mounted) {
+        setState(() {
+          todaysWords = wordsToDisplay;
+          totalWordsCount = allWordsSorted.length;
+          _wordStack = List<Map<String, dynamic>>.from(wordsToDisplay);
+          _currentCardIndex = 0;
+        });
+
+        debugPrint(
+          'Updated UI with ${wordsToDisplay.length} words to display (${allWordsSorted.length} total), current index: $_currentCardIndex',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating UI from ViewModels: $e');
     }
   }
 
@@ -341,14 +369,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await wordsListVm.loadWords();
       if (!mounted) return;
 
+      // Get today's words first
+      final todaysWordsList = wordsListVm.todaysWords;
+
+      // Get all words sorted by time (for fallback and quiz)
       final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
+
+      // If user has words added today, use those; otherwise use last added words
+      List<Map<String, dynamic>> wordsToDisplay = [];
+      if (todaysWordsList.isNotEmpty) {
+        wordsToDisplay = List<Map<String, dynamic>>.from(todaysWordsList);
+      } else {
+        // No words added today, show last added words
+        wordsToDisplay = List<Map<String, dynamic>>.from(allWordsSorted);
+      }
+
       _allWords = allWordsSorted.map((w) => Word.fromMap(w)).toList();
 
       if (mounted) {
         setState(() {
-          _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
+          _wordStack = List<Map<String, dynamic>>.from(wordsToDisplay);
           _currentCardIndex = 0;
-          todaysWords = allWordsSorted;
+          todaysWords = wordsToDisplay;
           totalWordsCount = allWordsSorted.length;
         });
         _cardAnimationController.forward(from: 0.0);
@@ -431,14 +473,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         appBar: AppBar(
           backgroundColor: ThemeColors.getBackgroundColor(context),
           elevation: 0,
-          title: Text(
-            AppLocalizations.of(context)!.home,
-            style: TextStyle(
-              color: ThemeColors.getTextColor(context),
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          // title: Text(
+          //   AppLocalizations.of(context)!.home,
+          //   style: TextStyle(
+          //     color: ThemeColors.getTextColor(context),
+          //     fontSize: 24,
+          //     fontWeight: FontWeight.bold,
+          //   ),
+          // ),
           actions: [
             Consumer<StreakViewModel>(
               builder: (context, streakVm, child) {
@@ -679,28 +721,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       children: [
                         _buildSwipeHint(
                           context: context,
-                          icon: Icons.arrow_upward_rounded,
+                          icon: Icons.swipe_up,
                           label: 'Quiz',
                           color: ThemeColors.getButtonColor(context),
                         ),
                         const SizedBox(width: 16),
                         _buildSwipeHint(
                           context: context,
-                          icon: Icons.arrow_back_rounded,
+                          icon: Icons.swipe_left,
                           label: 'Synonym',
                           color: ThemeColors.getButtonColor(context),
                         ),
                         const SizedBox(width: 16),
                         _buildSwipeHint(
                           context: context,
-                          icon: Icons.arrow_forward_rounded,
+                          icon: Icons.swipe_right,
                           label: 'Antonym',
                           color: ThemeColors.getButtonColor(context),
                         ),
                         const SizedBox(width: 16),
                         _buildSwipeHint(
                           context: context,
-                          icon: Icons.arrow_downward_rounded,
+                          icon: Icons.swipe_down,
                           label: 'Next',
                           color: ThemeColors.getButtonColor(context),
                         ),
@@ -747,51 +789,59 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildEmptyCardState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 400),
-        decoration: BoxDecoration(
-          color: ThemeColors.getCardColor(context),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.book_outlined,
-                  size: 64,
-                  color: ThemeColors.getSecondaryTextColor(context),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  AppLocalizations.of(context)!.noWordsToday,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: ThemeColors.getTextColor(context),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  AppLocalizations.of(context)!.addFirstWord,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: ThemeColors.getSecondaryTextColor(context),
-                  ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380, minHeight: 400),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: ThemeColors.getCardColor(context),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.black.withValues(alpha: 0.4)
+                      : Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 28,
+                  offset: const Offset(0, 10),
+                  spreadRadius: 0,
                 ),
               ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: SizedBox(
+                height: 400,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.book_outlined,
+                      size: 64,
+                      color: ThemeColors.getSecondaryTextColor(context),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      AppLocalizations.of(context)!.noWordsToday,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: ThemeColors.getTextColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      AppLocalizations.of(context)!.addFirstWord,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: ThemeColors.getSecondaryTextColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -800,94 +850,115 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildNoMoreWordsState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 400),
-        decoration: BoxDecoration(
-          color: ThemeColors.getCardColor(context),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 25,
-              offset: const Offset(0, 10),
-              spreadRadius: 2,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380, minHeight: 400),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: ThemeColors.getCardColor(context),
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.black.withValues(alpha: 0.4)
+                      : Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 28,
+                  offset: const Offset(0, 10),
+                  spreadRadius: 0,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.todayWords,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: ThemeColors.getSecondaryTextColor(context),
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.5,
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: SizedBox(
+                height: 400,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with refresh button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.todayWords,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: ThemeColors.getTextColor(context),
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.refresh_rounded,
+                            color: ThemeColors.getSecondaryTextColor(context),
+                            size: 20,
+                          ),
+                          onPressed: _refreshCards,
+                          tooltip: 'Refresh to most recent',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.refresh_rounded,
-                      color: ThemeColors.getSecondaryTextColor(context),
-                      size: 20,
+                    const Spacer(),
+                    // No more words content
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 64,
+                            color: ThemeColors.getPrimaryColor(context),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No More Words',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: ThemeColors.getTextColor(context),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'You\'ve viewed all words!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: ThemeColors.getSecondaryTextColor(context),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                    onPressed: _refreshCards,
-                    tooltip: 'Refresh to most recent',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              Icon(
-                Icons.check_circle_outline,
-                size: 64,
-                color: ThemeColors.getPrimaryColor(context),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No More Words',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: ThemeColors.getTextColor(context),
+                    const Spacer(),
+                    // Add word button
+                    Center(
+                      child: FloatingActionButton.extended(
+                        heroTag: 'add_word_empty',
+                        onPressed: () async {
+                          await context.push('/add-word');
+                          _refreshData();
+                        },
+                        backgroundColor: ThemeColors.getButtonColor(context),
+                        foregroundColor: AppColors.darkGray,
+                        icon: const Icon(Icons.add),
+                        label: Text(AppLocalizations.of(context)!.addWord),
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'You\'ve viewed all words!',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: ThemeColors.getSecondaryTextColor(context),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              FloatingActionButton.extended(
-                heroTag: 'add_word_empty',
-                onPressed: () async {
-                  await context.push('/add-word');
-                  _refreshData();
-                },
-                backgroundColor: ThemeColors.getButtonColor(context),
-                foregroundColor: AppColors.darkGray,
-                icon: const Icon(Icons.add),
-                label: Text(AppLocalizations.of(context)!.addWord),
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

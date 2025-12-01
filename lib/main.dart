@@ -131,14 +131,22 @@ void main() async {
   // ============================================================
   final adMobService = AdMobService();
   try {
+    // Use longer timeout to match AdMobService internal timeout
     await adMobService.init().timeout(
-      const Duration(seconds: 5),
+      const Duration(seconds: 20),
       onTimeout: () {
-        debugPrint('AdMob service init timeout');
+        debugPrint('⚠️ AdMob service init timeout in main.dart');
       },
     );
-  } catch (e) {
-    debugPrint('AdMob initialization error: $e');
+    // Verify initialization
+    if (adMobService.isInitialized) {
+      debugPrint('✅ AdMob verified as initialized in main.dart');
+    } else {
+      debugPrint('⚠️ AdMob initialization completed but isInitialized is false');
+    }
+  } catch (e, stackTrace) {
+    debugPrint('❌ AdMob initialization error in main.dart: $e');
+    debugPrint('Stack trace: $stackTrace');
     // Continue app initialization even if AdMob fails
   }
 

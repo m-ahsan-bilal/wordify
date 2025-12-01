@@ -35,12 +35,26 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   }
 
   void _loadAd() {
-    if (!AdMobService().isInitialized) {
-      debugPrint('AdMob not initialized, skipping ad load');
+    final adMobService = AdMobService();
+    
+    if (!adMobService.isInitialized) {
+      debugPrint('⚠️ AdMob not initialized, retrying initialization...');
+      // Try to initialize if not already initialized
+      adMobService.init().then((_) {
+        if (mounted && adMobService.isInitialized) {
+          debugPrint('✅ AdMob initialized, loading ad...');
+          _loadAd();
+        } else {
+          debugPrint('❌ AdMob initialization failed, cannot load ad');
+        }
+      }).catchError((e) {
+        debugPrint('❌ Failed to initialize AdMob: $e');
+      });
       return;
     }
 
     if (_isLoading || _isAdLoaded) {
+      debugPrint('⏸️ Ad already loading or loaded, skipping');
       return;
     }
 
@@ -48,10 +62,14 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
 
     setState(() {
       _isLoading = true;
+      _isAdError = false;
     });
 
     final adSize = widget.adSize ?? AdSize.banner;
-    final adUnitId = AdMobService().bannerAdUnitId;
+    final adUnitId = adMobService.bannerAdUnitId;
+    
+    debugPrint('📱 Loading banner ad with unit ID: $adUnitId');
+    debugPrint('📏 Ad size: ${adSize.width}x${adSize.height}');
 
     try {
       _bannerAd = BannerAd(
@@ -60,6 +78,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
         request: const AdRequest(),
         listener: BannerAdListener(
           onAdLoaded: (ad) {
+            debugPrint('✅ Banner ad loaded successfully');
             if (mounted) {
               setState(() {
                 _isAdLoaded = true;
@@ -69,6 +88,9 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
             }
           },
           onAdFailedToLoad: (ad, error) {
+            debugPrint('❌ Banner ad failed to load: ${error.code} - ${error.message}');
+            debugPrint('   Domain: ${error.domain}');
+            debugPrint('   Response info: ${error.responseInfo}');
             if (mounted) {
               setState(() {
                 _isAdLoaded = false;
@@ -77,21 +99,40 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
               });
             }
             ad.dispose();
+            
+            // Retry after delay if error is recoverable (not invalid request or invalid ad size)
+            // Error codes: 0=INTERNAL_ERROR, 1=INVALID_REQUEST, 2=NETWORK_ERROR, 3=NO_FILL, 4=APP_ID_MISSING, etc.
+            // Only retry for network errors or no fill, not for invalid requests
+            final errorCode = error.code;
+            if (errorCode != 1 && errorCode != 4) { // Not INVALID_REQUEST or APP_ID_MISSING
+              Future.delayed(const Duration(seconds: 5), () {
+                if (mounted && !_isAdLoaded && !_isLoading) {
+                  debugPrint('🔄 Retrying ad load after error (code: $errorCode)...');
+                  _loadAd();
+                }
+              });
+            } else {
+              debugPrint('⚠️ Non-recoverable error (code: $errorCode), not retrying');
+            }
           },
           onAdOpened: (_) {
-            debugPrint('Banner ad opened');
+            debugPrint('👆 Banner ad opened');
           },
           onAdClosed: (_) {
-            debugPrint('Banner ad closed');
+            debugPrint('👋 Banner ad closed');
+          },
+          onAdImpression: (_) {
+            debugPrint('👁️ Banner ad impression recorded');
           },
         ),
       );
 
       _bannerAd?.load();
 
-      // Timeout after 10 seconds
-      Future.delayed(const Duration(seconds: 10), () {
+      // Timeout after 15 seconds
+      Future.delayed(const Duration(seconds: 15), () {
         if (mounted && !_isAdLoaded && !_isAdError) {
+          debugPrint('⏱️ Ad load timeout after 15 seconds');
           setState(() {
             _isLoading = false;
             _isAdError = true;
@@ -100,8 +141,9 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
           _bannerAd = null;
         }
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Error creating banner ad: $e');
+      debugPrint('Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -121,13 +163,43 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   @override
   Widget build(BuildContext context) {
     try {
-      // If AdMob is not initialized, don't show anything
-      if (!AdMobService().isInitialized) {
-        return const SizedBox.shrink();
+      final adMobService = AdMobService();
+      
+      // If AdMob is not initialized, try to initialize and show loading
+      if (!adMobService.isInitialized) {
+        debugPrint('⚠️ AdMob not initialized in build, attempting initialization...');
+        // Trigger initialization if not already done
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!adMobService.isInitialized && mounted) {
+            adMobService.init().then((_) {
+              if (mounted && adMobService.isInitialized) {
+                _loadAd();
+              }
+            });
+          }
+        });
+        // Show loading state while initializing
+        return Container(
+          margin: widget.margin ?? EdgeInsets.zero,
+          height: widget.adSize?.height.toDouble() ?? 50,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
       }
 
-      // If ad failed to load, show nothing
+      // If ad failed to load, show nothing (but log for debugging)
       if (_isAdError) {
+        debugPrint('⚠️ Ad failed to load, showing empty space');
         return const SizedBox.shrink();
       }
 
@@ -154,6 +226,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
       // Show the ad with proper constraints
       if (_bannerAd != null && _isAdLoaded) {
         final adHeight = widget.adSize?.height.toDouble() ?? 50;
+        debugPrint('✅ Rendering banner ad (${adHeight.toInt()}px height)');
         return Container(
           margin: widget.margin ?? EdgeInsets.zero,
           height: adHeight,
@@ -167,9 +240,20 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
         );
       }
 
+      // If we reach here, ad might not have started loading yet
+      // Trigger load if needed
+      if (!_isLoading && !_isAdLoaded && !_isAdError) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _loadAd();
+          }
+        });
+      }
+
       return const SizedBox.shrink();
-    } catch (e) {
-      debugPrint('Error building AdBannerWidget: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error building AdBannerWidget: $e');
+      debugPrint('Stack trace: $stackTrace');
       return const SizedBox.shrink();
     }
   }

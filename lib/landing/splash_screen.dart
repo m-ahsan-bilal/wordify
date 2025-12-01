@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
+import 'package:provider/provider.dart';
 import '../core/utils/app_colors.dart';
+import '../viewmodel/words_list_vm.dart';
+import '../viewmodel/streak_vm.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -106,6 +109,16 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       if (hasSeenOnboarding) {
+        // Preload data before navigating to home screen
+        try {
+          await _preloadHomeScreenData();
+        } catch (e) {
+          debugPrint('Error preloading home screen data: $e');
+          // Continue navigation even if preload fails
+        }
+
+        if (!mounted) return;
+
         if (context.mounted) {
           try {
             context.go('/home');
@@ -165,58 +178,88 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
+  /// Preload data for home screen to avoid showing empty card
+  Future<void> _preloadHomeScreenData() async {
+    try {
+      // Access ViewModels through context
+      if (!context.mounted) return;
+
+      // Preload words
+      try {
+        final wordsListVm = context.read<WordsListViewModel>();
+        await wordsListVm.loadWords().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('Words preload timeout');
+          },
+        );
+      } catch (e) {
+        debugPrint('Error preloading words: $e');
+      }
+
+      // Preload streak
+      try {
+        final streakVm = context.read<StreakViewModel>();
+        await streakVm.validateStreak().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () {
+            debugPrint('Streak preload timeout');
+          },
+        );
+      } catch (e) {
+        debugPrint('Error preloading streak: $e');
+      }
+
+      debugPrint('✅ Home screen data preloaded successfully');
+    } catch (e) {
+      debugPrint('Error in _preloadHomeScreenData: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Gradient background with animated layered shapes
-          _BackgroundGradient(animation: _floatAnimation),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Gradient background with animated layered shapes
+            _BackgroundGradient(animation: _floatAnimation),
 
-          // Main content
-          SafeArea(
-            child: Column(
-              children: [
-                // Premium button in top right with fade animation
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: _PremiumButton(),
+            // Main content - centered in stack
+            Positioned.fill(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Spacer to push card to center
+                  const Spacer(),
+
+                  // Central card with fade and scale animations
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: _SplashCard(
+                      scaleAnimation: _scaleAnimation,
+                      progressAnimation: _progressAnimation,
                     ),
                   ),
-                ),
 
-                // Spacer to push content to center
-                const Expanded(child: SizedBox()),
+                  // Spacer to push bottom text down
+                  const Spacer(),
 
-                // Central card with fade and scale animations
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: _SplashCard(
-                    scaleAnimation: _scaleAnimation,
-                    progressAnimation: _progressAnimation,
+                  // Bottom text with fade animation
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 32.0),
+                      child: _BottomText(),
+                    ),
                   ),
-                ),
-
-                // Spacer
-                const Expanded(child: SizedBox()),
-
-                // Bottom text with fade animation
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 32.0),
-                    child: _BottomText(),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -303,37 +346,7 @@ class _BackgroundGradient extends StatelessWidget {
   }
 }
 
-/// Reusable Premium button
-class _PremiumButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.lightPurple,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.darkPurple, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.auto_awesome, size: 16, color: AppColors.darkGray),
-          const SizedBox(width: 6),
-          Text(
-            'Premium',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.darkGray,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Reusable central splash card with animations
+/// central splash card with animations
 class _SplashCard extends StatelessWidget {
   final Animation<double> scaleAnimation;
   final Animation<double> progressAnimation;
@@ -449,7 +462,7 @@ class _AnimatedProgressBar extends StatelessWidget {
   }
 }
 
-/// Reusable bottom text
+///  bottom text
 class _BottomText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
