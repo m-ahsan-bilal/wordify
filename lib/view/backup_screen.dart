@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/utils/app_colors.dart';
+import '../core/services/connectivity_service.dart';
 import '../viewmodel/backup_vm.dart';
 import 'widgets/ad_banner_widget.dart';
+import 'widgets/offline_indicator.dart';
 import '../l10n/app_localizations.dart';
 
 /// Backup Screen - Handles Google Drive backup and restore
@@ -50,9 +52,15 @@ class _BackupScreenState extends State<BackupScreen> {
       ),
       body: Consumer<BackupViewModel>(
         builder: (context, backupVm, _) {
-          return Column(
-            children: [
-              Expanded(
+          final connectivityService = ConnectivityService();
+          return ValueListenableBuilder<bool>(
+            valueListenable: connectivityService.isConnected,
+            builder: (context, isConnected, _) {
+              return Column(
+                children: [
+                  // Offline indicator banner
+                  const OfflineIndicator(),
+                  Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -77,7 +85,7 @@ class _BackupScreenState extends State<BackupScreen> {
 
                       // Signed In Section
                       if (backupVm.isSignedIn)
-                        _buildSignedInSection(context, backupVm),
+                        _buildSignedInSection(context, backupVm, isConnected),
 
                       const SizedBox(height: 24),
 
@@ -92,10 +100,12 @@ class _BackupScreenState extends State<BackupScreen> {
                     ],
                   ),
                 ),
-              ),
-              // Ad Banner at bottom
-              const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
-            ],
+                  ),
+                  // Ad Banner at bottom
+                  const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
+                ],
+              );
+            },
           );
         },
       ),
@@ -255,7 +265,7 @@ class _BackupScreenState extends State<BackupScreen> {
     );
   }
 
-  Widget _buildSignedInSection(BuildContext context, BackupViewModel backupVm) {
+  Widget _buildSignedInSection(BuildContext context, BackupViewModel backupVm, bool isConnected) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -356,45 +366,71 @@ class _BackupScreenState extends State<BackupScreen> {
 
         // Create Backup Button
         ElevatedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? AppColors.darkOnSurface
-                          : Colors.white,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'This feature is under development',
-                        style: TextStyle(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? AppColors.darkOnSurface
-                              : Colors.white,
-                          fontSize: 14,
+          onPressed: isConnected && !backupVm.isLoading
+              ? () {
+                  if (!isConnected) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Row(
+                          children: [
+                            Icon(Icons.wifi_off, color: Colors.white),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Internet connection required for backup',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
                         ),
+                        backgroundColor: Colors.orange.shade700,
+                        behavior: SnackBarBehavior.floating,
+                        margin: EdgeInsets.all(16),
                       ),
+                    );
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkOnSurface
+                                : Colors.white,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'This feature is under development',
+                              style: TextStyle(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.darkOnSurface
+                                    : Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: ThemeColors.getPrimaryColor(context),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 3),
                     ),
-                  ],
-                ),
-                backgroundColor: ThemeColors.getPrimaryColor(context),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                margin: const EdgeInsets.all(16),
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          },
+                  );
+                }
+              : null,
           icon: const Icon(Icons.backup),
           label: Text(AppLocalizations.of(context)!.createBackup),
           style: ElevatedButton.styleFrom(
-            backgroundColor: ThemeColors.getPrimaryColor(context),
+            backgroundColor: isConnected
+                ? ThemeColors.getPrimaryColor(context)
+                : ThemeColors.getPrimaryColor(context).withValues(alpha: 0.5),
             foregroundColor: Theme.of(context).brightness == Brightness.dark
                 ? AppColors.darkOnSurface
                 : Colors.white,
@@ -410,47 +446,77 @@ class _BackupScreenState extends State<BackupScreen> {
         // Restore Backup Button
         if (backupVm.backupExists)
           OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkOnSurface
-                            : Colors.white,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'This feature is under development',
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? AppColors.darkOnSurface
-                                : Colors.white,
-                            fontSize: 14,
+            onPressed: isConnected && !backupVm.isLoading
+                ? () {
+                    if (!isConnected) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Row(
+                            children: [
+                              Icon(Icons.wifi_off, color: Colors.white),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Internet connection required for restore',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
                           ),
+                          backgroundColor: Colors.orange.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          margin: EdgeInsets.all(16),
                         ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: ThemeColors.getPrimaryColor(context),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
+                      );
+                      return;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.darkOnSurface
+                                  : Colors.white,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'This feature is under development',
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.darkOnSurface
+                                      : Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: ThemeColors.getPrimaryColor(context),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                   margin: const EdgeInsets.all(16),
                   duration: const Duration(seconds: 3),
                 ),
               );
-            },
+            }
+            : null,
             icon: const Icon(Icons.restore),
             label: Text(AppLocalizations.of(context)!.backupRestore),
             style: OutlinedButton.styleFrom(
-              foregroundColor: ThemeColors.getPrimaryColor(context),
-              side: BorderSide(color: ThemeColors.getPrimaryColor(context)),
+              foregroundColor: isConnected
+                  ? ThemeColors.getPrimaryColor(context)
+                  : ThemeColors.getPrimaryColor(context).withValues(alpha: 0.5),
+              side: BorderSide(
+                color: isConnected
+                    ? ThemeColors.getPrimaryColor(context)
+                    : ThemeColors.getPrimaryColor(context).withValues(alpha: 0.5),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

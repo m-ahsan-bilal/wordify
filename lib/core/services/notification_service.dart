@@ -14,7 +14,12 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  // Lazy initialization - only access Firebase when needed
+  FirebaseMessaging? _messaging;
+  FirebaseMessaging get messaging {
+    _messaging ??= FirebaseMessaging.instance;
+    return _messaging!;
+  }
 
   bool _initialized = false;
   String? _fcmToken;
@@ -35,7 +40,7 @@ class NotificationService {
 
       // Request notification permissions (Android 13+, iOS)
       try {
-        final settings = await _messaging.requestPermission(
+        final settings = await messaging.requestPermission(
           alert: true,
           badge: true,
           sound: true,
@@ -78,7 +83,7 @@ class NotificationService {
 
       // Handle notification that opened the app from terminated state
       try {
-        final initialMessage = await _messaging.getInitialMessage();
+        final initialMessage = await messaging.getInitialMessage();
         if (initialMessage != null) {
           _handleMessageClick(initialMessage);
         }
@@ -88,7 +93,7 @@ class NotificationService {
 
       // Get FCM token (required for topic subscriptions)
       try {
-        _fcmToken = await _messaging.getToken();
+        _fcmToken = await messaging.getToken();
         if (_fcmToken != null && _fcmToken!.isNotEmpty) {
           debugPrint(
             '✅ FCM Token obtained: ${_fcmToken!.substring(0, _fcmToken!.length > 20 ? 20 : _fcmToken!.length)}...',
@@ -97,7 +102,7 @@ class NotificationService {
           debugPrint('❌ FCM Token is null - retrying...');
           // Retry after a delay
           await Future.delayed(const Duration(seconds: 2));
-          _fcmToken = await _messaging.getToken();
+          _fcmToken = await messaging.getToken();
           if (_fcmToken != null && _fcmToken!.isNotEmpty) {
             debugPrint(
               '✅ FCM Token obtained on retry: ${_fcmToken!.substring(0, _fcmToken!.length > 20 ? 20 : _fcmToken!.length)}...',
@@ -112,7 +117,7 @@ class NotificationService {
       }
 
       // Listen for token refresh
-      _messaging.onTokenRefresh.listen((newToken) {
+      messaging.onTokenRefresh.listen((newToken) {
         if (newToken.isNotEmpty) {
           debugPrint(
             'FCM Token refreshed: ${newToken.substring(0, newToken.length > 20 ? 20 : newToken.length)}...',
@@ -159,7 +164,7 @@ class NotificationService {
   /// Get FCM token for this device
   /// Use this token to send notifications from your backend/Firebase Console
   Future<String?> getFCMToken() async {
-    return await _messaging.getToken();
+    return await messaging.getToken();
   }
 
   /// Subscribe to a topic
@@ -169,7 +174,7 @@ class NotificationService {
       // Ensure we have FCM token before subscribing
       if (_fcmToken == null) {
         debugPrint('⏳ Waiting for FCM token before subscribing to $topic...');
-        _fcmToken = await _messaging.getToken();
+        _fcmToken = await messaging.getToken();
         if (_fcmToken == null) {
           debugPrint('❌ FCM token still null, cannot subscribe to $topic');
           return;
@@ -180,7 +185,7 @@ class NotificationService {
       // Wait a bit to ensure Firebase Messaging is ready
       await Future.delayed(const Duration(milliseconds: 1000));
 
-      await _messaging.subscribeToTopic(topic);
+      await messaging.subscribeToTopic(topic);
       debugPrint('✅ Successfully subscribed to topic: $topic');
     } catch (e, stackTrace) {
       debugPrint('❌ Failed to subscribe to topic $topic: $e');
@@ -191,13 +196,13 @@ class NotificationService {
 
   /// Unsubscribe from a topic
   Future<void> unsubscribeFromTopic(String topic) async {
-    await _messaging.unsubscribeFromTopic(topic);
+    await messaging.unsubscribeFromTopic(topic);
     debugPrint('Unsubscribed from topic: $topic');
   }
 
   /// Request permission for notifications (iOS)
   Future<bool> requestPermission() async {
-    final settings = await _messaging.requestPermission(
+    final settings = await messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
@@ -324,7 +329,7 @@ class NotificationService {
     };
 
     try {
-      final permission = await _messaging.requestPermission();
+      final permission = await messaging.requestPermission();
       status['permissionStatus'] = permission.authorizationStatus.toString();
       status['permissionGranted'] =
           permission.authorizationStatus == AuthorizationStatus.authorized;
@@ -333,7 +338,7 @@ class NotificationService {
     }
 
     try {
-      final token = await _messaging.getToken();
+      final token = await messaging.getToken();
       if (token != null && token.isNotEmpty) {
         status['currentToken'] = token.toString();
       } else {

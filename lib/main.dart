@@ -10,6 +10,7 @@ import 'dart:ui';
 // Core Services
 import 'core/services/notification_service.dart';
 import 'core/services/admob_service.dart';
+import 'core/services/connectivity_service.dart';
 import 'core/utils/theme_provider.dart';
 import 'core/utils/language_provider.dart';
 import 'l10n/app_localizations.dart';
@@ -52,71 +53,38 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ============================================================
-  // FIREBASE INITIALIZATION (with error handling)
+  // CRITICAL INITIALIZATION ONLY (needed before first frame)
   // ============================================================
+
+  // Hive initialization (needed for settings check in splash)
   try {
-    await Firebase.initializeApp();
-
-    // Set up error handlers only if Firebase initialized successfully
-    FlutterError.onError = (FlutterErrorDetails details) {
-      try {
-        FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-      } catch (e) {
-        debugPrint('Error recording to Crashlytics: $e');
-      }
-    };
-
-    PlatformDispatcher.instance.onError = (error, stack) {
-      try {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      } catch (e) {
-        debugPrint('Error recording to Crashlytics: $e');
-      }
-      return true;
-    };
-
-    // Register background FCM handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  } catch (e, stackTrace) {
-    debugPrint('Firebase initialization error: $e');
-    debugPrint('Stack trace: $stackTrace');
-    // Continue app initialization even if Firebase fails
-  }
-
-  // ============================================================
-  // HIVE INITIALIZATION (with error handling)
-  // ============================================================
-  try {
-    await Hive.initFlutter();
+    await Hive.initFlutter().timeout(
+      const Duration(seconds: 2),
+      onTimeout: () {
+        debugPrint('Hive init timeout - continuing anyway');
+      },
+    );
   } catch (e) {
     debugPrint('Hive initialization error: $e');
-    // Try to continue, but app might have issues
   }
 
-  // Initialize local data sources (with error handling)
+  // Initialize settings box (needed for splash screen onboarding check)
   try {
-    await WordsLocalDatasource().init();
-  } catch (e) {
-    debugPrint('WordsLocalDatasource init error: $e');
-  }
-
-  try {
-    await StreakLocalDatasource().init();
-  } catch (e) {
-    debugPrint('StreakLocalDatasource init error: $e');
-  }
-
-  try {
-    await QuizLocalDatasource().init();
-  } catch (e) {
-    debugPrint('QuizLocalDatasource init error: $e');
-  }
-
-  // Initialize settings box (needed for SettingsViewModel)
-  try {
-    await Hive.openBox('settings');
+    await Hive.openBox('settings').timeout(
+      const Duration(milliseconds: 500),
+      onTimeout: () {
+        debugPrint('Settings box open timeout');
+        return Hive.box('settings'); // Return existing box if timeout
+      },
+    );
   } catch (e) {
     debugPrint('Settings box open error: $e');
+    // Try to get existing box
+    try {
+      Hive.box('settings');
+    } catch (_) {
+      // Ignore if box doesn't exist yet
+    }
   }
 
   // ============================================================
@@ -127,155 +95,13 @@ void main() async {
   final quizRepository = QuizRepositoryImpl();
 
   // ============================================================
-  // ADMOB SERVICE INITIALIZATION (with error handling)
-  // ============================================================
-  final adMobService = AdMobService();
-  try {
-    // Use longer timeout to match AdMobService internal timeout
-    await adMobService.init().timeout(
-      const Duration(seconds: 20),
-      onTimeout: () {
-        debugPrint('⚠️ AdMob service init timeout in main.dart');
-      },
-    );
-    // Verify initialization
-    if (adMobService.isInitialized) {
-      debugPrint('✅ AdMob verified as initialized in main.dart');
-    } else {
-      debugPrint('⚠️ AdMob initialization completed but isInitialized is false');
-    }
-  } catch (e, stackTrace) {
-    debugPrint('❌ AdMob initialization error in main.dart: $e');
-    debugPrint('Stack trace: $stackTrace');
-    // Continue app initialization even if AdMob fails
-  }
-
-  // ============================================================
-  // NOTIFICATION SERVICE INITIALIZATION (with error handling)
-  // ============================================================
-  final notificationService = NotificationService();
-  try {
-    // Initialize with timeout to prevent hanging
-    await notificationService.init().timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        debugPrint('Notification service init timeout');
-      },
-    );
-
-    // Wait a bit for Firebase Messaging to be fully ready
-    await Future.delayed(const Duration(milliseconds: 1000));
-
-    // Check if notifications are enabled in settings before subscribing
-    try {
-      final settingsBox = await Hive.openBox('settings');
-      final notificationsEnabled = settingsBox.get(
-        'notificationsEnabled',
-        defaultValue: true,
-      );
-
-      if (notificationsEnabled) {
-        debugPrint('Notifications are enabled, subscribing to topics...');
-        // Note: Topic subscriptions are optional and can be enabled later
-        // Subscribe to topics asynchronously (non-blocking) with longer timeout
-        // This allows app to start even if subscriptions take time
-        notificationService
-            .enableDailyReminders(checkSettings: false) // Already checked above
-            .timeout(
-              const Duration(seconds: 15),
-              onTimeout: () {
-                debugPrint(
-                  'Daily reminders subscription timeout (non-blocking)',
-                );
-              },
-            )
-            .catchError((e) {
-              debugPrint('Failed to enable daily reminders: $e');
-            });
-
-        notificationService
-            .enableStreakAlerts()
-            .timeout(
-              const Duration(seconds: 15),
-              onTimeout: () {
-                debugPrint('Streak alerts subscription timeout (non-blocking)');
-              },
-            )
-            .catchError((e) {
-              debugPrint('Failed to enable streak alerts: $e');
-            });
-      } else {
-        debugPrint(
-          'Notifications are disabled in settings, skipping topic subscriptions',
-        );
-      }
-    } catch (e) {
-      debugPrint(
-        'Could not check notification settings, subscribing anyway: $e',
-      );
-      // Subscribe anyway if we can't check settings
-      notificationService.enableDailyReminders(checkSettings: false).catchError(
-        (e) {
-          debugPrint('Failed to enable daily reminders: $e');
-        },
-      );
-      notificationService.enableStreakAlerts().catchError((e) {
-        debugPrint('Failed to enable streak alerts: $e');
-      });
-    }
-  } catch (e) {
-    debugPrint('Notification service init error: $e');
-    // Continue app initialization even if notifications fail
-    // Try to subscribe anyway (might work if Firebase is partially initialized)
-    notificationService.enableDailyReminders(checkSettings: false).catchError((
-      e,
-    ) {
-      debugPrint('Failed to enable daily reminders after init error: $e');
-    });
-    notificationService.enableStreakAlerts().catchError((e) {
-      debugPrint('Failed to enable streak alerts after init error: $e');
-    });
-  }
-
-  // Verify FCM status after initialization
-  try {
-    final status = await notificationService.verifyFCMStatus();
-    debugPrint('FCM Status Check: $status');
-  } catch (e) {
-    debugPrint('Could not verify FCM status: $e');
-  }
-
-  // ============================================================
   // ROUTER INITIALIZATION
   // ============================================================
   final router = AppRouter.createRouter();
 
-  // Set notification click handler to navigate (with error handling)
-  notificationService.onNotificationClick = (String? payload) {
-    try {
-      if (payload != null && payload.isNotEmpty) {
-        // Use addPostFrameCallback to ensure router is ready
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          try {
-            router.go(payload);
-          } catch (e) {
-            debugPrint('Navigation error from notification: $e');
-            // Fallback to home if navigation fails
-            try {
-              router.go('/home');
-            } catch (_) {
-              // Ignore fallback errors
-            }
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('Notification click handler error: $e');
-    }
-  };
-
   // ============================================================
-  // RUN APP WITH DEPENDENCY INJECTION
+  // RUN APP IMMEDIATELY (don't wait for heavy initialization)
+  // This makes native splash disappear quickly
   // ============================================================
   runApp(
     MultiProvider(
@@ -314,6 +140,195 @@ void main() async {
       child: VocabApp(router: router),
     ),
   );
+
+  // ============================================================
+  // BACKGROUND INITIALIZATION (runs after app starts)
+  // This doesn't block the first frame, so native splash disappears quickly
+  // ============================================================
+
+  // Helper function to initialize NotificationService after Firebase is ready
+  void _initializeNotificationService() {
+    Future.microtask(() async {
+      final notificationService = NotificationService();
+      try {
+        await notificationService.init().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('Notification service init timeout');
+          },
+        );
+
+        // Check if notifications are enabled in settings before subscribing
+        try {
+          final settingsBox = await Hive.openBox('settings').timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => Hive.box('settings'),
+          );
+          final notificationsEnabled = settingsBox.get(
+            'notificationsEnabled',
+            defaultValue: true,
+          );
+
+          if (notificationsEnabled) {
+            notificationService
+                .enableDailyReminders(checkSettings: false)
+                .timeout(
+                  const Duration(seconds: 10),
+                  onTimeout: () {
+                    debugPrint('Daily reminders subscription timeout');
+                  },
+                )
+                .catchError((e) {
+                  debugPrint('Failed to enable daily reminders: $e');
+                });
+
+            notificationService
+                .enableStreakAlerts()
+                .timeout(
+                  const Duration(seconds: 10),
+                  onTimeout: () {
+                    debugPrint('Streak alerts subscription timeout');
+                  },
+                )
+                .catchError((e) {
+                  debugPrint('Failed to enable streak alerts: $e');
+                });
+          }
+        } catch (e) {
+          debugPrint('Could not check notification settings: $e');
+        }
+
+        // Set notification click handler
+        notificationService.onNotificationClick = (String? payload) {
+          try {
+            if (payload != null && payload.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                try {
+                  router.go(payload);
+                } catch (e) {
+                  debugPrint('Navigation error from notification: $e');
+                  try {
+                    router.go('/home');
+                  } catch (_) {
+                    // Ignore fallback errors
+                  }
+                }
+              });
+            }
+          } catch (e) {
+            debugPrint('Notification click handler error: $e');
+          }
+        };
+      } catch (e) {
+        debugPrint('Notification service init error: $e');
+      }
+    });
+  }
+
+  // Initialize data sources in background
+  Future.microtask(() async {
+    try {
+      await WordsLocalDatasource().init();
+    } catch (e) {
+      debugPrint('WordsLocalDatasource init error: $e');
+    }
+
+    try {
+      await StreakLocalDatasource().init();
+    } catch (e) {
+      debugPrint('StreakLocalDatasource init error: $e');
+    }
+
+    try {
+      await QuizLocalDatasource().init();
+    } catch (e) {
+      debugPrint('QuizLocalDatasource init error: $e');
+    }
+  });
+
+  // Firebase initialization in background - MUST complete before NotificationService
+  Future.microtask(() async {
+    try {
+      await Firebase.initializeApp().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () async {
+          debugPrint('Firebase init timeout');
+          // Try to get existing Firebase app if timeout
+          try {
+            return Firebase.app();
+          } catch (_) {
+            // If no app exists, return a dummy (won't be used)
+            rethrow;
+          }
+        },
+      );
+
+      debugPrint('✅ Firebase initialized successfully');
+
+      // Set up error handlers only if Firebase initialized successfully
+      FlutterError.onError = (FlutterErrorDetails details) {
+        try {
+          FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+        } catch (e) {
+          debugPrint('Error recording to Crashlytics: $e');
+        }
+      };
+
+      PlatformDispatcher.instance.onError = (error, stack) {
+        try {
+          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        } catch (e) {
+          debugPrint('Error recording to Crashlytics: $e');
+        }
+        return true;
+      };
+
+      // Register background FCM handler
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
+
+      // Now that Firebase is initialized, initialize NotificationService
+      _initializeNotificationService();
+    } catch (e, stackTrace) {
+      debugPrint('Firebase initialization error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      // Even if Firebase fails, try to initialize NotificationService (it will handle errors)
+      _initializeNotificationService();
+    }
+  });
+
+  // AdMob initialization in background (non-blocking)
+  Future.microtask(() async {
+    final adMobService = AdMobService();
+    try {
+      await adMobService.init().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⚠️ AdMob service init timeout');
+        },
+      );
+      if (adMobService.isInitialized) {
+        debugPrint('✅ AdMob initialized');
+      }
+    } catch (e) {
+      debugPrint('❌ AdMob initialization error: $e');
+    }
+  });
+
+  // Connectivity service initialization in background
+  Future.microtask(() {
+    final connectivityService = ConnectivityService();
+    try {
+      connectivityService.checkConnectivity().catchError((e) {
+        debugPrint('Connectivity check failed (non-critical): $e');
+        return true;
+      });
+      connectivityService.startMonitoring();
+    } catch (e) {
+      debugPrint('Error initializing connectivity service: $e');
+    }
+  });
 }
 
 /// Main App Widget

@@ -128,7 +128,10 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: ThemeColors.getTextColor(context)),
+              Icon(
+                Icons.check_circle,
+                color: ThemeColors.getTextColor(context),
+              ),
               const SizedBox(width: 8),
               Text(AppLocalizations.of(context)!.wordUpdatedSuccessfully),
             ],
@@ -311,43 +314,41 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                     ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                  if (!isEditing) ...[
-                    // View Mode - Word Header Card
-                    _buildWordHeaderCard(word),
-                    const SizedBox(height: 16),
+                        if (!isEditing) ...[
+                          // View Mode - Word Header Card
+                          _buildWordHeaderCard(word),
+                          const SizedBox(height: 16),
 
-                    // View Mode - Details Cards
-                    _buildMeaningCard(word),
-                    const SizedBox(height: 16),
-                    _buildSynonymsAntonymsCard(word),
-                    const SizedBox(height: 16),
-                    _buildSentenceCard(word),
-                    const SizedBox(height: 16),
-                    _buildSourceCard(word),
-                    const SizedBox(height: 16),
-                    _buildActionButtons(),
-                  ] else ...[
-                    // Edit Mode - Form
-                    _buildEditForm(),
-                  ],
-                ],
-              ),
-              if (viewModel.isLoading)
-                Container(
-                  color: Colors.black26,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: ThemeColors.getTextColor(context),
+                          // View Mode - Details Cards
+                          _buildMeaningCard(word),
+                          const SizedBox(height: 16),
+                          _buildSynonymsAntonymsCard(word),
+                          const SizedBox(height: 16),
+                          _buildSentenceCard(word),
+                          const SizedBox(height: 16),
+                          _buildSourceCard(word),
+                          const SizedBox(height: 16),
+                          _buildActionButtons(),
+                        ] else ...[
+                          // Edit Mode - Form
+                          _buildEditForm(),
+                        ],
+                      ],
                     ),
-                  ),
-                ),
+                    if (viewModel.isLoading)
+                      Container(
+                        color: Colors.black26,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: ThemeColors.getTextColor(context),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
               // Ad Banner at bottom
-              const AdBannerWidget(
-                margin: EdgeInsets.symmetric(vertical: 8),
-              ),
+              const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
             ],
           );
         },
@@ -547,7 +548,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Text(
                     antonym.trim(),
@@ -596,7 +599,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: ThemeColors.getSecondaryColor(context).withValues(alpha: 0.3),
+              color: ThemeColors.getSecondaryColor(
+                context,
+              ).withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -704,7 +709,6 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
     );
   }
 
-
   // Edit Mode Component
   Widget _buildEditForm() {
     return Column(
@@ -762,16 +766,6 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
           maxLines: 3,
         ),
         const SizedBox(height: 16),
-
-        // Source Input
-        _buildEditSection(
-          AppLocalizations.of(context)!.source,
-          _sourceController,
-          null,
-          null,
-          AppLocalizations.of(context)!.whereDidYouLearnThisWordShort,
-        ),
-        const SizedBox(height: 32),
 
         // Save and Cancel Buttons
         Row(
@@ -872,8 +866,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
                       ? AppLocalizations.of(context)!.thisFieldIsRequired
                       : null
                 : null,
-            fillColor: ThemeColors.getSecondaryColor(context)
-                .withValues(alpha: 0.3),
+            fillColor: ThemeColors.getSecondaryColor(
+              context,
+            ).withValues(alpha: 0.3),
           ),
         ],
       ),

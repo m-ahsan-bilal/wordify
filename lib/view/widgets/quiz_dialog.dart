@@ -163,20 +163,10 @@ class _QuizDialogState extends State<QuizDialog>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header with close button only
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Expanded(
-                  child: Text(
-                    _getQuizTypeLabel(widget.question.type),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: ThemeColors.getPrimaryColor(context),
-                    ),
-                  ),
-                ),
                 IconButton(
                   icon: Icon(
                     Icons.close,
@@ -186,7 +176,6 @@ class _QuizDialogState extends State<QuizDialog>
                 ),
               ],
             ),
-            const SizedBox(height: 16),
 
             // Question
             Text(
@@ -327,14 +316,4 @@ class _QuizDialogState extends State<QuizDialog>
     );
   }
 
-  String _getQuizTypeLabel(QuizType type) {
-    switch (type) {
-      case QuizType.meaning:
-        return 'Meaning Quiz';
-      case QuizType.synonym:
-        return 'Synonym Quiz';
-      case QuizType.antonym:
-        return 'Antonym Quiz';
-    }
-  }
 }

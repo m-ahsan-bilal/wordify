@@ -83,8 +83,11 @@ class _QuizScreenState extends State<QuizScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.quizCompleted),
-        content: Text('${AppLocalizations.of(context)!.youScored} $score ${AppLocalizations.of(context)!.outOf} ${questions.length}'),
+        title: null,
+        titlePadding: EdgeInsets.zero,
+        content: Text(
+          '${AppLocalizations.of(context)!.youScored} $score ${AppLocalizations.of(context)!.outOf} ${questions.length}',
+        ),
         actions: [
           TextButton(
             onPressed: () {
@@ -109,7 +112,9 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget build(BuildContext context) {
     if (questions.isEmpty) {
       return Scaffold(
-        body: Center(child: Text(AppLocalizations.of(context)!.noWordsAvailableForQuiz)),
+        body: Center(
+          child: Text(AppLocalizations.of(context)!.noWordsAvailableForQuiz),
+        ),
       );
     }
 
@@ -120,12 +125,11 @@ class _QuizScreenState extends State<QuizScreen> {
       backgroundColor: ThemeColors.getBackgroundColor(context),
       appBar: AppBar(
         backgroundColor: ThemeColors.getBackgroundColor(context),
-        title: Text(
-          AppLocalizations.of(context)!.quizTitle(currentQuestion + 1, questions.length),
-          style: TextStyle(color: ThemeColors.getTextColor(context)),
-        ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: ThemeColors.getTextColor(context)),
+          icon: Icon(
+            Icons.arrow_back,
+            color: ThemeColors.getTextColor(context),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -143,7 +147,10 @@ class _QuizScreenState extends State<QuizScreen> {
                     strokeWidth: 4,
                   ),
                 ),
-                Text('$timeLeft ${AppLocalizations.of(context)!.seconds}', style: TextStyle(fontSize: 12)),
+                Text(
+                  '$timeLeft ${AppLocalizations.of(context)!.seconds}',
+                  style: TextStyle(fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -165,7 +172,9 @@ class _QuizScreenState extends State<QuizScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        AppLocalizations.of(context)!.whatIsTheMeaningOf(q['word']),
+                        AppLocalizations.of(
+                          context,
+                        )!.whatIsTheMeaningOf(q['word']),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -191,7 +200,10 @@ class _QuizScreenState extends State<QuizScreen> {
                               setState(() => _selectedOption = opt);
                               checkAnswer(opt);
                             },
-                            child: Text(opt, style: const TextStyle(fontSize: 16)),
+                            child: Text(
+                              opt,
+                              style: const TextStyle(fontSize: 16),
+                            ),
                           ),
                         ),
                       ),
@@ -202,9 +214,7 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
           // Ad Banner at bottom
-          const AdBannerWidget(
-            margin: EdgeInsets.symmetric(vertical: 8),
-          ),
+          const AdBannerWidget(margin: EdgeInsets.symmetric(vertical: 8)),
         ],
       ),
     );
@@ -213,7 +223,8 @@ class _QuizScreenState extends State<QuizScreen> {
   String? _selectedOption;
 
   List<String> _generateOptions(dynamic correct) {
-    final correctStr = correct?.toString() ?? AppLocalizations.of(context)!.noMeaningAvailable;
+    final correctStr =
+        correct?.toString() ?? AppLocalizations.of(context)!.noMeaningAvailable;
     final allWords = wordsBox.values.toList().cast<Map>();
     final options = <String>[correctStr];
 

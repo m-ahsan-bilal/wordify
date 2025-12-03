@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+// Google Fonts import removed - using system fonts for better performance and offline support
 
 /// Safely get Google Fonts with fallback to system font
 /// This prevents crashes when network is unavailable
+/// Uses timeout to prevent blocking
 TextStyle safeGoogleFonts({
   required String fontFamily,
   double? fontSize,
@@ -12,8 +13,21 @@ TextStyle safeGoogleFonts({
   double? height,
   TextDecoration? decoration,
 }) {
+  // For splash screen and critical paths, use system font directly
+  // to avoid any network delays or blocking
+  return TextStyle(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    letterSpacing: letterSpacing,
+    height: height,
+    decoration: decoration,
+  );
+  
+  // Uncomment below if you want to try Google Fonts (may block on slow/no network)
+  /*
   try {
-    // Try to use Google Fonts
+    // Try to use Google Fonts with timeout
     switch (fontFamily.toLowerCase()) {
       case 'inter':
         return GoogleFonts.inter(
@@ -47,5 +61,6 @@ TextStyle safeGoogleFonts({
       decoration: decoration,
     );
   }
+  */
 }
 

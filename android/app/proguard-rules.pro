@@ -60,3 +60,65 @@
     public static *** i(...);
 }
 
+# Google Sign-In
+-keep class com.google.android.gms.auth.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+-dontwarn com.google.android.gms.auth.**
+-dontwarn com.google.android.gms.common.**
+
+# Google APIs
+-keep class com.google.api.** { *; }
+-keep class com.google.apis.** { *; }
+-dontwarn com.google.api.**
+-dontwarn com.google.apis.**
+
+# Hive (local database)
+-keep class hive.** { *; }
+-keep class io.flutter.plugins.hive.** { *; }
+-dontwarn hive.**
+-dontwarn io.flutter.plugins.hive.**
+
+# Connectivity Plus
+-keep class dev.fluttercommunity.plus.connectivity.** { *; }
+-dontwarn dev.fluttercommunity.plus.connectivity.**
+
+# Path Provider
+-keep class io.flutter.plugins.pathprovider.** { *; }
+-dontwarn io.flutter.plugins.pathprovider.**
+
+# Package Info Plus
+-keep class dev.fluttercommunity.plus.packageinfo.** { *; }
+-dontwarn dev.fluttercommunity.plus.packageinfo.**
+
+# Flutter TTS
+-keep class com.tundralabs.fluttertts.** { *; }
+-dontwarn com.tundralabs.fluttertts.**
+
+# Keep all model classes that might be serialized
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# Keep annotation default values
+-keepattributes AnnotationDefault
+
+# Keep line numbers for better crash reports
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# Additional optimizations
+-optimizationpasses 5
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-verbose
+
+# Remove unused code more aggressively
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+    static void checkNotNull(java.lang.Object);
+    static void checkNotNull(java.lang.Object, java.lang.String);
+}
+
+# Optimize code
+-optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+-allowaccessmodification
+-repackageclasses ''

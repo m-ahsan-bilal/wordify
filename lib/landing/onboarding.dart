@@ -522,107 +522,122 @@ class _QuizTutorialPageState extends State<_QuizTutorialPage>
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 40),
-            // Animated quiz demo
+            const SizedBox(height: 20),
+            // Animated quiz demo - made scrollable to prevent overflow
             Expanded(
-              child: Center(
-                child: FadeTransition(
-                  opacity: _quizCardAnimation,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Word card
-                        Container(
-                          padding: const EdgeInsets.all(20),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Center(
+                      child: FadeTransition(
+                        opacity: _quizCardAnimation,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: EdgeInsets.all(constraints.maxHeight < 600 ? 16 : 24),
+                          constraints: BoxConstraints(
+                            maxWidth: 400,
+                            minHeight: constraints.maxHeight * 0.7,
+                          ),
                           decoration: BoxDecoration(
-                            color: AppColors.lightLavender,
-                            borderRadius: BorderRadius.circular(16),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                           ),
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                'Eloquent',
-                                style: SafeFonts.safeGoogleFonts(
-                                  fontFamily: 'inter',
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.darkGray,
+                              // Word card
+                              Container(
+                                padding: EdgeInsets.all(constraints.maxHeight < 600 ? 16 : 20),
+                                decoration: BoxDecoration(
+                                  color: AppColors.lightLavender,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Eloquent',
+                                      style: SafeFonts.safeGoogleFonts(
+                                        fontFamily: 'inter',
+                                        fontSize: constraints.maxHeight < 600 ? 20 : 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.darkGray,
+                                      ),
+                                    ),
+                                    SizedBox(height: constraints.maxHeight < 600 ? 6 : 8),
+                                    Text(
+                                      'Fluent and persuasive in speaking or writing',
+                                      style: SafeFonts.safeGoogleFonts(
+                                        fontFamily: 'inter',
+                                        fontSize: constraints.maxHeight < 600 ? 12 : 14,
+                                        color: AppColors.lightGray,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: constraints.maxHeight < 600 ? 16 : 24),
+                              // Quiz question
                               Text(
-                                'Fluent and persuasive in speaking or writing',
+                                'What is the meaning?',
                                 style: SafeFonts.safeGoogleFonts(
                                   fontFamily: 'inter',
-                                  fontSize: 14,
-                                  color: AppColors.lightGray,
+                                  fontSize: constraints.maxHeight < 600 ? 16 : 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.darkGray,
                                 ),
                                 textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: constraints.maxHeight < 600 ? 12 : 16),
+                              // Options
+                              ...[
+                                'A) Clear',
+                                'B) Confusing',
+                                'C) Fluent',
+                                'D) Silent',
+                              ].map(
+                                (option) => Container(
+                                  margin: EdgeInsets.only(bottom: constraints.maxHeight < 600 ? 8 : 12),
+                                  padding: EdgeInsets.all(constraints.maxHeight < 600 ? 12 : 16),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.lightLavender,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.lightPurple,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    option,
+                                    style: SafeFonts.safeGoogleFonts(
+                                      fontFamily: 'inter',
+                                      fontSize: constraints.maxHeight < 600 ? 14 : 16,
+                                      color: AppColors.darkGray,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        // Quiz question
-                        Text(
-                          'What is the meaning?',
-                          style: SafeFonts.safeGoogleFonts(
-                            fontFamily: 'inter',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.darkGray,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Options
-                        ...[
-                          'A) Clear',
-                          'B) Confusing',
-                          'C) Fluent',
-                          'D) Silent',
-                        ].map(
-                          (option) => Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.lightLavender,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.lightPurple,
-                                width: 2,
-                              ),
-                            ),
-                            child: Text(
-                              option,
-                              style: SafeFonts.safeGoogleFonts(
-                                fontFamily: 'inter',
-                                fontSize: 16,
-                                color: AppColors.darkGray,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -763,19 +778,29 @@ class _SwipeTutorialPageState extends State<_SwipeTutorialPage>
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 40),
-            // Animated swipe demo
+            const SizedBox(height: 20),
+            // Animated swipe demo - made scrollable to prevent overflow
             Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Card with swipe animation
-                    SlideTransition(
-                      position: _swipeAnimations[_currentSwipeIndex],
-                      child: Container(
-                        width: 280,
-                        padding: const EdgeInsets.all(24),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Card with swipe animation
+                          SlideTransition(
+                            position: _swipeAnimations[_currentSwipeIndex],
+                            child: Container(
+                              width: double.infinity,
+                              constraints: const BoxConstraints(maxWidth: 280),
+                              margin: const EdgeInsets.symmetric(horizontal: 24),
+                              padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(24),
@@ -787,75 +812,133 @@ class _SwipeTutorialPageState extends State<_SwipeTutorialPage>
                             ),
                           ],
                         ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Eloquent',
-                              style: SafeFonts.safeGoogleFonts(
-                                fontFamily: 'inter',
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.darkGray,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Eloquent',
+                                    style: SafeFonts.safeGoogleFonts(
+                                      fontFamily: 'inter',
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.darkGray,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Fluent and persuasive',
+                                    style: SafeFonts.safeGoogleFonts(
+                                      fontFamily: 'inter',
+                                      fontSize: 16,
+                                      color: AppColors.lightGray,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Fluent and persuasive',
-                              style: SafeFonts.safeGoogleFonts(
-                                fontFamily: 'inter',
-                                fontSize: 16,
-                                color: AppColors.lightGray,
-                              ),
+                          ),
+                          SizedBox(height: constraints.maxHeight < 600 ? 20 : 40),
+                          // Swipe instructions - responsive layout
+                          if (constraints.maxHeight < 600)
+                            // Compact layout for small screens
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                _buildSwipeInstruction(
+                                  icon: Icons.arrow_upward_rounded,
+                                  label: 'Swipe Up',
+                                  description: 'Quiz: Meaning',
+                                  color: AppColors.lightGreen,
+                                  isActive: _currentSwipeIndex == 0,
+                                  isCompact: true,
+                                ),
+                                _buildSwipeInstruction(
+                                  icon: Icons.arrow_downward_rounded,
+                                  label: 'Swipe Down',
+                                  description: 'Next Word',
+                                  color: AppColors.lightPurple,
+                                  isActive: _currentSwipeIndex == 1,
+                                  isCompact: true,
+                                ),
+                                _buildSwipeInstruction(
+                                  icon: Icons.arrow_back_rounded,
+                                  label: 'Swipe Left',
+                                  description: 'Quiz: Synonym',
+                                  color: AppColors.lightBlue,
+                                  isActive: _currentSwipeIndex == 2,
+                                  isCompact: true,
+                                ),
+                                _buildSwipeInstruction(
+                                  icon: Icons.arrow_forward_rounded,
+                                  label: 'Swipe Right',
+                                  description: 'Quiz: Antonym',
+                                  color: AppColors.purple,
+                                  isActive: _currentSwipeIndex == 3,
+                                  isCompact: true,
+                                ),
+                              ],
+                            )
+                          else
+                            // Full layout for larger screens
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildSwipeInstruction(
+                                  icon: Icons.arrow_upward_rounded,
+                                  label: 'Swipe Up',
+                                  description: 'Quiz: Meaning',
+                                  color: AppColors.lightGreen,
+                                  isActive: _currentSwipeIndex == 0,
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Flexible(
+                                      child: _buildSwipeInstruction(
+                                        icon: Icons.arrow_back_rounded,
+                                        label: 'Swipe Left',
+                                        description: 'Quiz: Synonym',
+                                        color: AppColors.lightBlue,
+                                        isActive: _currentSwipeIndex == 2,
+                                        isCompact: true,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    Flexible(
+                                      child: _buildSwipeInstruction(
+                                        icon: Icons.arrow_forward_rounded,
+                                        label: 'Swipe Right',
+                                        description: 'Quiz: Antonym',
+                                        color: AppColors.purple,
+                                        isActive: _currentSwipeIndex == 3,
+                                        isCompact: true,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                _buildSwipeInstruction(
+                                  icon: Icons.arrow_downward_rounded,
+                                  label: 'Swipe Down',
+                                  description: 'Next Word',
+                                  color: AppColors.lightPurple,
+                                  isActive: _currentSwipeIndex == 1,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          SizedBox(height: constraints.maxHeight < 600 ? 20 : 40),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 40),
-                    // Swipe instructions
-                    _buildSwipeInstruction(
-                      icon: Icons.arrow_upward_rounded,
-                      label: 'Swipe Up',
-                      description: 'Quiz: Meaning',
-                      color: AppColors.lightGreen,
-                      isActive: _currentSwipeIndex == 0,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildSwipeInstruction(
-                          icon: Icons.arrow_back_rounded,
-                          label: 'Swipe Left',
-                          description: 'Quiz: Synonym',
-                          color: AppColors.lightBlue,
-                          isActive: _currentSwipeIndex == 2,
-                          isCompact: true,
-                        ),
-                        const SizedBox(width: 24),
-                        _buildSwipeInstruction(
-                          icon: Icons.arrow_forward_rounded,
-                          label: 'Swipe Right',
-                          description: 'Quiz: Antonym',
-                          color: AppColors.purple,
-                          isActive: _currentSwipeIndex == 3,
-                          isCompact: true,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSwipeInstruction(
-                      icon: Icons.arrow_downward_rounded,
-                      label: 'Swipe Down',
-                      description: 'Next Word',
-                      color: AppColors.lightPurple,
-                      isActive: _currentSwipeIndex == 1,
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -872,7 +955,11 @@ class _SwipeTutorialPageState extends State<_SwipeTutorialPage>
   }) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      padding: EdgeInsets.all(isCompact ? 12 : 16),
+      padding: EdgeInsets.all(isCompact ? 10 : 14),
+      constraints: BoxConstraints(
+        maxWidth: isCompact ? 140 : double.infinity,
+        minWidth: isCompact ? 120 : 200,
+      ),
       decoration: BoxDecoration(
         color: isActive
             ? color.withValues(alpha: 0.2)
@@ -887,31 +974,40 @@ class _SwipeTutorialPageState extends State<_SwipeTutorialPage>
         mainAxisSize: isCompact ? MainAxisSize.min : MainAxisSize.max,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: isActive ? color : AppColors.lightGray, size: 24),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: SafeFonts.safeGoogleFonts(
-                  fontFamily: 'inter',
-                  fontSize: isCompact ? 14 : 16,
-                  fontWeight: FontWeight.bold,
-                  color: isActive ? color : AppColors.darkGray,
-                ),
-              ),
-              if (!isCompact)
+          Icon(
+            icon,
+            color: isActive ? color : AppColors.lightGray,
+            size: isCompact ? 20 : 24,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  description,
+                  label,
                   style: SafeFonts.safeGoogleFonts(
                     fontFamily: 'inter',
-                    fontSize: 12,
-                    color: AppColors.lightGray,
+                    fontSize: isCompact ? 12 : 14,
+                    fontWeight: FontWeight.bold,
+                    color: isActive ? color : AppColors.darkGray,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-            ],
+                if (!isCompact)
+                  Text(
+                    description,
+                    style: SafeFonts.safeGoogleFonts(
+                      fontFamily: 'inter',
+                      fontSize: 11,
+                      color: AppColors.lightGray,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+              ],
+            ),
           ),
         ],
       ),

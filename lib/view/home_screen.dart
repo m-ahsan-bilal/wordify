@@ -12,6 +12,7 @@ import '../core/model/quiz_model.dart';
 import 'widgets/quiz_dialog.dart';
 import 'widgets/ad_banner_widget.dart';
 import 'widgets/reusable_loading_overlay.dart';
+import 'widgets/offline_indicator.dart';
 import '../l10n/app_localizations.dart';
 
 /// Home Screen - Uses StreakViewModel, QuizViewModel, and WordsListViewModel
@@ -116,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Check if data is already loaded from preload
     try {
       final wordsListVm = context.read<WordsListViewModel>();
-      if (wordsListVm.todaysWords.isNotEmpty || 
+      if (wordsListVm.todaysWords.isNotEmpty ||
           wordsListVm.getAllWordsSortedByTime().isNotEmpty) {
         // Data already loaded, just update UI
         _updateUIFromViewModels();
@@ -213,13 +214,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     try {
       final wordsListVm = context.read<WordsListViewModel>();
-      
+
       // Get today's words first
       final todaysWordsList = wordsListVm.todaysWords;
-      
+
       // Get all words sorted by time (for fallback and quiz)
       final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
-      
+
       // If user has words added today, use those; otherwise use last added words
       List<Map<String, dynamic>> wordsToDisplay = [];
       if (todaysWordsList.isNotEmpty) {
@@ -228,19 +229,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // No words added today, show last added words
         wordsToDisplay = List<Map<String, dynamic>>.from(allWordsSorted);
       }
-      
+
       _allWords = allWordsSorted
           .map((w) {
             try {
               return Word.fromMap(w);
             } catch (e) {
               debugPrint('Error parsing word: $e');
-              return Word(
-                word: '',
-                meaning: '',
-                synonyms: '',
-                antonyms: '',
-              );
+              return Word(word: '', meaning: '', synonyms: '', antonyms: '');
             }
           })
           .where((w) => w.word.isNotEmpty)
@@ -525,6 +521,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         body: Column(
           children: [
+            // Offline indicator banner
+            const OfflineIndicator(),
             Expanded(
               child: Stack(
                 children: [

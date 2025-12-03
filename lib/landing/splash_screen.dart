@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import '../core/utils/app_colors.dart';
+import '../core/utils/safe_fonts.dart';
 import '../viewmodel/words_list_vm.dart';
 import '../viewmodel/streak_vm.dart';
 
@@ -16,175 +16,188 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _progressController;
-  late AnimationController _fadeController;
-  late AnimationController _scaleController;
-  late AnimationController _floatController;
-  late Animation<double> _progressAnimation;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _floatAnimation;
+  AnimationController? _progressController;
+  AnimationController? _fadeController;
+  AnimationController? _scaleController;
+  AnimationController? _floatController;
+  Animation<double>? _progressAnimation;
+  Animation<double>? _fadeAnimation;
+  Animation<double>? _scaleAnimation;
+  Animation<double>? _floatAnimation;
+  bool _isNavigating = false;
 
   @override
   void initState() {
     super.initState();
-
-    // Progress bar animation
-    _progressController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
-    _progressAnimation = Tween<double>(begin: 0.0, end: 0.33).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
-    );
-
-    // Fade in animation
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
-
-    // Scale animation for icon
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
-    );
-
-    // Floating animation for background shapes
-    _floatController = AnimationController(
-      duration: const Duration(seconds: 3),
-      vsync: this,
-    );
-    _floatAnimation = Tween<double>(begin: -10.0, end: 10.0).animate(
-      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
-    );
-
-    // Start animations
-    _fadeController.forward();
-    _scaleController.forward();
-    _progressController.forward();
-    _floatController.repeat(reverse: true);
-
+    _initializeAnimations();
     _navigateAfterDelay();
+  }
+
+  void _initializeAnimations() {
+    try {
+      // Progress bar animation (1.5 seconds)
+      _progressController = AnimationController(
+        duration: const Duration(milliseconds: 1500),
+        vsync: this,
+      );
+      _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _progressController!, curve: Curves.easeInOut),
+      );
+
+      // Fade in animation
+      _fadeController = AnimationController(
+        duration: const Duration(milliseconds: 800),
+        vsync: this,
+      );
+      _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _fadeController!, curve: Curves.easeOut),
+      );
+
+      // Scale animation for icon
+      _scaleController = AnimationController(
+        duration: const Duration(milliseconds: 600),
+        vsync: this,
+      );
+      _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _scaleController!, curve: Curves.elasticOut),
+      );
+
+      // Floating animation for background shapes
+      _floatController = AnimationController(
+        duration: const Duration(milliseconds: 1500),
+        vsync: this,
+      );
+      _floatAnimation = Tween<double>(begin: -10.0, end: 10.0).animate(
+        CurvedAnimation(parent: _floatController!, curve: Curves.easeInOut),
+      );
+
+      // Start animations safely
+      _fadeController?.forward();
+      _scaleController?.forward();
+      _progressController?.forward();
+      _floatController?.repeat(reverse: true);
+    } catch (e) {
+      debugPrint('Error initializing animations: $e');
+      // Continue without animations if they fail
+    }
   }
 
   @override
   void dispose() {
-    _progressController.dispose();
-    _fadeController.dispose();
-    _scaleController.dispose();
-    _floatController.dispose();
+    _progressController?.dispose();
+    _fadeController?.dispose();
+    _scaleController?.dispose();
+    _floatController?.dispose();
     super.dispose();
   }
 
   Future<void> _navigateAfterDelay() async {
-    // Wait for splash screen duration
-    await Future.delayed(const Duration(seconds: 3));
+    // Prevent multiple navigation attempts
+    if (_isNavigating) return;
+    _isNavigating = true;
 
-    if (!mounted) return;
-
-    // Check if user has seen onboarding
     try {
-      final box = await Hive.openBox('settings').timeout(
-        const Duration(seconds: 3),
-        onTimeout: () {
-          debugPrint('Hive box open timeout');
-          return Hive.box('settings'); // Return existing box if timeout
-        },
-      );
-      final hasSeenOnboarding = box.get('onboarding', defaultValue: false);
-
-      if (!mounted) return;
-
-      // Add a delay to ensure router and providers are ready
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (!mounted) return;
-
-      if (hasSeenOnboarding) {
-        // Preload data before navigating to home screen
+      // Check onboarding status with timeout and error handling
+      Future<bool> checkOnboarding() async {
         try {
-          await _preloadHomeScreenData();
+          final box = await Hive.openBox('settings').timeout(
+            const Duration(milliseconds: 500),
+            onTimeout: () {
+              debugPrint('Hive box open timeout - using default');
+              try {
+                return Hive.box('settings');
+              } catch (e) {
+                debugPrint('Error accessing Hive box: $e');
+                return Hive.box('settings');
+              }
+            },
+          );
+          final hasSeenOnboarding = box.get('onboarding', defaultValue: false);
+          return hasSeenOnboarding;
         } catch (e) {
+          debugPrint('Error checking onboarding: $e');
+          // Default to onboarding if check fails
+          return false;
+        }
+      }
+
+      // Start onboarding check in parallel (non-blocking)
+      final onboardingFuture = checkOnboarding();
+
+      // Show splash screen for 1.5 seconds (minimum display time)
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      if (!mounted || _isNavigating == false) return;
+
+      // Get onboarding status
+      bool hasSeenOnboarding = false;
+      try {
+        hasSeenOnboarding = await onboardingFuture;
+      } catch (e) {
+        debugPrint('Error getting onboarding status: $e');
+        hasSeenOnboarding = false; // Default to onboarding
+      }
+
+      if (!mounted) return;
+
+      // Start preloading data in background (non-blocking, won't crash if fails)
+      if (hasSeenOnboarding) {
+        _preloadHomeScreenData().catchError((e) {
           debugPrint('Error preloading home screen data: $e');
           // Continue navigation even if preload fails
-        }
+        });
+      }
 
-        if (!mounted) return;
-
-        if (context.mounted) {
-          try {
-            context.go('/home');
-          } catch (e) {
-            debugPrint('Error navigating to home: $e');
-            // Retry navigation after a delay
-            await Future.delayed(const Duration(milliseconds: 500));
-            if (mounted && context.mounted) {
-              try {
-                context.go('/home');
-              } catch (e2) {
-                debugPrint('Retry navigation failed: $e2');
-                // Final fallback
-                await Future.delayed(const Duration(milliseconds: 500));
-                if (mounted && context.mounted) {
-                  try {
-                    context.go('/home');
-                  } catch (e3) {
-                    debugPrint('Final navigation retry failed: $e3');
-                  }
+      // Navigate after 1.5 seconds with error handling
+      if (mounted && context.mounted) {
+        try {
+          final route = hasSeenOnboarding ? '/home' : '/onboarding';
+          context.go(route);
+        } catch (e) {
+          debugPrint('Error navigating: $e');
+          // Retry navigation after brief delay
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (mounted && context.mounted) {
+            try {
+              final route = hasSeenOnboarding ? '/home' : '/onboarding';
+              context.go(route);
+            } catch (e2) {
+              debugPrint('Retry navigation failed: $e2');
+              // Final fallback - try onboarding
+              if (mounted && context.mounted) {
+                try {
+                  context.go('/onboarding');
+                } catch (e3) {
+                  debugPrint('Final navigation fallback failed: $e3');
                 }
               }
             }
           }
         }
-      } else {
-        if (context.mounted) {
-          try {
-            context.go('/onboarding');
-          } catch (e) {
-            debugPrint('Error navigating to onboarding: $e');
-            // Retry navigation after a delay
-            await Future.delayed(const Duration(milliseconds: 500));
-            if (mounted && context.mounted) {
-              try {
-                context.go('/onboarding');
-              } catch (e2) {
-                debugPrint('Retry navigation failed: $e2');
-              }
-            }
-          }
-        }
       }
-    } catch (e) {
-      debugPrint('Error navigating from splash: $e');
-      // If there's an error, default to onboarding with retry
-      if (mounted) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (context.mounted) {
-          try {
+    } catch (e, stackTrace) {
+      debugPrint('Critical error in splash navigation: $e');
+      debugPrint('Stack trace: $stackTrace');
+      // Emergency fallback navigation
+      if (mounted && context.mounted) {
+        try {
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted && context.mounted) {
             context.go('/onboarding');
-          } catch (e2) {
-            debugPrint('Fallback navigation failed: $e2');
           }
+        } catch (e2) {
+          debugPrint('Emergency navigation failed: $e2');
         }
       }
     }
   }
 
-  /// Preload data for home screen to avoid showing empty card
+  /// Preload data for home screen - non-blocking, won't crash app
   Future<void> _preloadHomeScreenData() async {
     try {
-      // Access ViewModels through context
-      if (!context.mounted) return;
+      if (!mounted || !context.mounted) return;
 
-      // Preload words
+      // Preload words with error handling
       try {
         final wordsListVm = context.read<WordsListViewModel>();
         await wordsListVm.loadWords().timeout(
@@ -195,36 +208,48 @@ class _SplashScreenState extends State<SplashScreen>
         );
       } catch (e) {
         debugPrint('Error preloading words: $e');
+        // Continue even if words fail to load
       }
 
-      // Preload streak
+      // Preload streak with error handling
       try {
+        if (!mounted || !context.mounted) return;
         final streakVm = context.read<StreakViewModel>();
         await streakVm.validateStreak().timeout(
-          const Duration(seconds: 3),
+          const Duration(seconds: 2),
           onTimeout: () {
             debugPrint('Streak preload timeout');
           },
         );
       } catch (e) {
         debugPrint('Error preloading streak: $e');
+        // Continue even if streak fails to load
       }
 
       debugPrint('✅ Home screen data preloaded successfully');
     } catch (e) {
       debugPrint('Error in _preloadHomeScreenData: $e');
+      // Don't throw - this is background loading
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Fallback UI if animations fail to initialize
+    if (_fadeAnimation == null ||
+        _scaleAnimation == null ||
+        _progressAnimation == null ||
+        _floatAnimation == null) {
+      return _buildFallbackSplash();
+    }
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: AppColors.lightLavender,
       body: SafeArea(
         child: Stack(
           children: [
             // Gradient background with animated layered shapes
-            _BackgroundGradient(animation: _floatAnimation),
+            _BackgroundGradient(animation: _floatAnimation!),
 
             // Main content - centered in stack
             Positioned.fill(
@@ -232,26 +257,24 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Spacer to push card to center
                   const Spacer(),
 
                   // Central card with fade and scale animations
                   FadeTransition(
-                    opacity: _fadeAnimation,
+                    opacity: _fadeAnimation!,
                     child: _SplashCard(
-                      scaleAnimation: _scaleAnimation,
-                      progressAnimation: _progressAnimation,
+                      scaleAnimation: _scaleAnimation!,
+                      progressAnimation: _progressAnimation!,
                     ),
                   ),
 
-                  // Spacer to push bottom text down
                   const Spacer(),
 
                   // Bottom text with fade animation
                   FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 32.0),
+                    opacity: _fadeAnimation!,
+                    child: const Padding(
+                      padding: EdgeInsets.only(bottom: 32.0),
                       child: _BottomText(),
                     ),
                   ),
@@ -259,6 +282,56 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Fallback splash screen if animations fail
+  Widget _buildFallbackSplash() {
+    return Scaffold(
+      backgroundColor: AppColors.lightLavender,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.lightPurple,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.edit_note,
+                  size: 32,
+                  color: AppColors.darkGray,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'WordMaster',
+                style: safeGoogleFonts(
+                  fontFamily: 'inter',
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkGray,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Learn powerful words effortlessly.',
+                style: safeGoogleFonts(
+                  fontFamily: 'inter',
+                  fontSize: 16,
+                  fontWeight: FontWeight.normal,
+                  color: AppColors.lightGray,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -277,13 +350,7 @@ class _BackgroundGradient extends StatelessWidget {
       animation: animation,
       builder: (context, child) {
         return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [AppColors.lightLavender, AppColors.lightLavender],
-            ),
-          ),
+          decoration: const BoxDecoration(color: AppColors.lightLavender),
           child: Stack(
             children: [
               // Large rounded rectangle - top left (floating)
@@ -346,7 +413,7 @@ class _BackgroundGradient extends StatelessWidget {
   }
 }
 
-/// central splash card with animations
+/// Central splash card with animations
 class _SplashCard extends StatelessWidget {
   final Animation<double> scaleAnimation;
   final Animation<double> progressAnimation;
@@ -375,7 +442,7 @@ class _SplashCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Icon with scale animation
+          // Icon with scale animation - with fallback
           ScaleTransition(
             scale: scaleAnimation,
             child: Container(
@@ -385,12 +452,7 @@ class _SplashCard extends StatelessWidget {
                 color: AppColors.lightPurple,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: ImageIcon(
-                AssetImage('assets/icons/logo.png'),
-                size: 32,
-                color: AppColors.darkGray,
-              ),
-              // child: Icon(Icons.edit_note, size: 32, color: AppColors.darkGray),
+              child: _buildLogo(),
             ),
           ),
 
@@ -399,7 +461,8 @@ class _SplashCard extends StatelessWidget {
           // Title
           Text(
             'WordMaster',
-            style: GoogleFonts.inter(
+            style: safeGoogleFonts(
+              fontFamily: 'inter',
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: AppColors.darkGray,
@@ -411,7 +474,8 @@ class _SplashCard extends StatelessWidget {
           // Subtitle
           Text(
             'Learn powerful words effortlessly.',
-            style: GoogleFonts.inter(
+            style: safeGoogleFonts(
+              fontFamily: 'inter',
               fontSize: 16,
               fontWeight: FontWeight.normal,
               color: AppColors.lightGray,
@@ -426,6 +490,20 @@ class _SplashCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildLogo() {
+    try {
+      return ImageIcon(
+        const AssetImage('assets/icons/logo.png'),
+        size: 32,
+        color: AppColors.darkGray,
+      );
+    } catch (e) {
+      debugPrint('Error loading logo: $e');
+      // Fallback to icon if image fails
+      return const Icon(Icons.edit_note, size: 32, color: AppColors.darkGray);
+    }
   }
 }
 
@@ -462,13 +540,16 @@ class _AnimatedProgressBar extends StatelessWidget {
   }
 }
 
-///  bottom text
+/// Bottom text
 class _BottomText extends StatelessWidget {
+  const _BottomText();
+
   @override
   Widget build(BuildContext context) {
     return Text(
       'Designed for focus • Built for consistency',
-      style: GoogleFonts.inter(
+      style: safeGoogleFonts(
+        fontFamily: 'inter',
         fontSize: 12,
         fontWeight: FontWeight.normal,
         color: AppColors.lightGray,
