@@ -23,7 +23,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   List<Map<String, dynamic>> todaysWords = [];
   int streak = 0;
   int totalWordsCount = 0;
@@ -36,9 +37,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentCardIndex = 0;
   late AnimationController _cardAnimationController;
 
+  // Track if screen was in background
+  bool _wasPaused = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _cardAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -79,8 +84,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cardAnimationController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused) {
+      _wasPaused = true;
+    } else if (state == AppLifecycleState.resumed && _wasPaused) {
+      // App came back from background, refresh data
+      _wasPaused = false;
+      if (mounted) {
+        _refreshData();
+      }
+    }
   }
 
   @override
@@ -117,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Check if data is already loaded from preload
     try {
       final wordsListVm = context.read<WordsListViewModel>();
-      if (wordsListVm.todaysWords.isNotEmpty ||
+      if (wordsListVm.getTodaysWords().isNotEmpty ||
           wordsListVm.getAllWordsSortedByTime().isNotEmpty) {
         // Data already loaded, just update UI
         _updateUIFromViewModels();
@@ -215,20 +235,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final wordsListVm = context.read<WordsListViewModel>();
 
-      // Get today's words first
-      final todaysWordsList = wordsListVm.todaysWords;
+      // Get today's words (for display info)
+      final todaysWordsList = wordsListVm.getTodaysWords();
 
-      // Get all words sorted by time (for fallback and quiz)
+      // Get all words sorted by time (most recent first)
+      // This includes today's words at the top, then older words
       final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
-
-      // If user has words added today, use those; otherwise use last added words
-      List<Map<String, dynamic>> wordsToDisplay = [];
-      if (todaysWordsList.isNotEmpty) {
-        wordsToDisplay = List<Map<String, dynamic>>.from(todaysWordsList);
-      } else {
-        // No words added today, show last added words
-        wordsToDisplay = List<Map<String, dynamic>>.from(allWordsSorted);
-      }
 
       _allWords = allWordsSorted
           .map((w) {
@@ -244,14 +256,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       if (mounted) {
         setState(() {
-          todaysWords = wordsToDisplay;
+          // Store today's words for reference
+          todaysWords = todaysWordsList.isNotEmpty
+              ? List<Map<String, dynamic>>.from(todaysWordsList)
+              : [];
           totalWordsCount = allWordsSorted.length;
-          _wordStack = List<Map<String, dynamic>>.from(wordsToDisplay);
-          _currentCardIndex = 0;
+
+          // Only show words in cards if words were added today
+          // If no words added today, show empty state with "no words added today" message
+          if (todaysWordsList.isNotEmpty) {
+            // Words added today - show all words (today's + older) in cards
+            // Today's words will be shown first (most recent first)
+            _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
+            _currentCardIndex = 0;
+          } else {
+            // No words added today - show empty state
+            _wordStack = [];
+            _currentCardIndex = 0;
+          }
         });
 
         debugPrint(
-          'Updated UI with ${wordsToDisplay.length} words to display (${allWordsSorted.length} total), current index: $_currentCardIndex',
+          'Updated UI: ${todaysWordsList.isNotEmpty ? "Words added today" : "No words added today"} - ${_wordStack.length} words in stack (${allWordsSorted.length} total), current index: $_currentCardIndex',
         );
       }
     } catch (e) {
@@ -365,30 +391,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await wordsListVm.loadWords();
       if (!mounted) return;
 
-      // Get today's words first
-      final todaysWordsList = wordsListVm.todaysWords;
+      // Get today's words (for display info)
+      final todaysWordsList = wordsListVm.getTodaysWords();
 
-      // Get all words sorted by time (for fallback and quiz)
+      // Get all words sorted by time (most recent first)
+      // This includes today's words at the top, then older words
       final allWordsSorted = wordsListVm.getAllWordsSortedByTime();
 
-      // If user has words added today, use those; otherwise use last added words
-      List<Map<String, dynamic>> wordsToDisplay = [];
-      if (todaysWordsList.isNotEmpty) {
-        wordsToDisplay = List<Map<String, dynamic>>.from(todaysWordsList);
-      } else {
-        // No words added today, show last added words
-        wordsToDisplay = List<Map<String, dynamic>>.from(allWordsSorted);
-      }
-
-      _allWords = allWordsSorted.map((w) => Word.fromMap(w)).toList();
+      _allWords = allWordsSorted
+          .map((w) {
+            try {
+              return Word.fromMap(w);
+            } catch (e) {
+              debugPrint('Error parsing word: $e');
+              return Word(word: '', meaning: '', synonyms: '', antonyms: '');
+            }
+          })
+          .where((w) => w.word.isNotEmpty)
+          .toList();
 
       if (mounted) {
         setState(() {
-          _wordStack = List<Map<String, dynamic>>.from(wordsToDisplay);
-          _currentCardIndex = 0;
-          todaysWords = wordsToDisplay;
+          // Store today's words for reference
+          todaysWords = todaysWordsList.isNotEmpty
+              ? List<Map<String, dynamic>>.from(todaysWordsList)
+              : [];
           totalWordsCount = allWordsSorted.length;
+
+          // Only show words in cards if words were added today
+          // If no words added today, show empty state with "no words added today" message
+          if (todaysWordsList.isNotEmpty) {
+            // Words added today - show all words (today's + older) in cards
+            // Today's words will be shown first (most recent first)
+            _wordStack = List<Map<String, dynamic>>.from(allWordsSorted);
+            _currentCardIndex = 0;
+          } else {
+            // No words added today - show empty state
+            _wordStack = [];
+            _currentCardIndex = 0;
+          }
         });
+
+        debugPrint(
+          'Refreshed UI: ${todaysWordsList.isNotEmpty ? "Words added today" : "No words added today"} - ${_wordStack.length} words in stack (${allWordsSorted.length} total), current index: $_currentCardIndex',
+        );
         _cardAnimationController.forward(from: 0.0);
       }
     } catch (e) {
@@ -469,13 +515,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         appBar: AppBar(
           backgroundColor: ThemeColors.getBackgroundColor(context),
           elevation: 0,
-          // title: Text(
-          //   AppLocalizations.of(context)!.home,
-          //   style: TextStyle(
-          //     color: ThemeColors.getTextColor(context),
-          //     fontSize: 24,
-          //     fontWeight: FontWeight.bold,
-          //   ),
           // ),
           actions: [
             Consumer<StreakViewModel>(

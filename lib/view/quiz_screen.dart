@@ -22,6 +22,7 @@ class _QuizScreenState extends State<QuizScreen> {
   bool correct = false;
   Timer? timer;
   int timeLeft = 15; // Optional timer per question
+  String? _selectedOption; // Track selected option for answer feedback
 
   @override
   void initState() {
@@ -45,19 +46,38 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void generateQuiz() {
-    final allWords = wordsBox.values.toList().cast<Map>();
-    allWords.shuffle();
-    questions = allWords.take(min(10, allWords.length)).toList();
+    try {
+      final allWords = wordsBox.values.toList().cast<Map>();
+      // Filter out words without meaning
+      final validWords = allWords.where((word) {
+        final meaning = word['meaning']?.toString() ?? '';
+        return meaning.trim().isNotEmpty;
+      }).toList();
+      
+      if (validWords.isEmpty) {
+        questions = [];
+        return;
+      }
+      
+      validWords.shuffle();
+      questions = validWords.take(min(10, validWords.length)).toList();
+    } catch (e) {
+      debugPrint('Error generating quiz: $e');
+      questions = [];
+    }
   }
 
   void checkAnswer(String answer) {
     if (answered) return;
 
-    final correctAnswer = questions[currentQuestion]['meaning'];
+    final question = questions[currentQuestion];
+    final correctAnswer = question['meaning']?.toString() ?? '';
+    final isCorrect = answer.trim().toLowerCase() == correctAnswer.trim().toLowerCase();
+    
     setState(() {
       answered = true;
-      correct =
-          answer.trim().toLowerCase() == correctAnswer.trim().toLowerCase();
+      correct = isCorrect;
+      _selectedOption = answer;
       if (correct) score++;
     });
 
@@ -71,6 +91,7 @@ class _QuizScreenState extends State<QuizScreen> {
         currentQuestion++;
         answered = false;
         correct = false;
+        _selectedOption = null; // Reset selected option
       });
       startTimer();
     } else {
@@ -119,7 +140,9 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     final q = questions[currentQuestion];
-    final options = _generateOptions(q['meaning']);
+    final wordText = q['word']?.toString() ?? '';
+    final meaning = q['meaning']?.toString() ?? '';
+    final options = _generateOptions(meaning);
 
     return Scaffold(
       backgroundColor: ThemeColors.getBackgroundColor(context),
@@ -174,7 +197,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       Text(
                         AppLocalizations.of(
                           context,
-                        )!.whatIsTheMeaningOf(q['word']),
+                        )!.whatIsTheMeaningOf(wordText),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -189,7 +212,7 @@ class _QuizScreenState extends State<QuizScreen> {
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size.fromHeight(50),
                               backgroundColor: answered
-                                  ? (opt == q['meaning']
+                                  ? (opt == meaning
                                         ? Colors.green
                                         : (opt == _selectedOption
                                               ? Colors.red
@@ -220,24 +243,34 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  String? _selectedOption;
-
-  List<String> _generateOptions(dynamic correct) {
-    final correctStr =
-        correct?.toString() ?? AppLocalizations.of(context)!.noMeaningAvailable;
-    final allWords = wordsBox.values.toList().cast<Map>();
+  List<String> _generateOptions(String correct) {
+    final correctStr = correct.trim().isNotEmpty
+        ? correct
+        : AppLocalizations.of(context)!.noMeaningAvailable;
     final options = <String>[correctStr];
 
-    while (options.length < 4 && allWords.isNotEmpty) {
-      final randomWord =
-          allWords[Random().nextInt(allWords.length)]['meaning']?.toString() ??
-          '';
-      if (randomWord.isNotEmpty && !options.contains(randomWord)) {
-        options.add(randomWord);
-      }
-    }
+    try {
+      final allWords = wordsBox.values.toList().cast<Map>();
+      final validMeanings = allWords
+          .map((w) => w['meaning']?.toString() ?? '')
+          .where((m) => m.trim().isNotEmpty && m != correct)
+          .toList();
 
-    options.shuffle();
-    return options;
+      while (options.length < 4 && validMeanings.isNotEmpty) {
+        final randomMeaning = validMeanings[Random().nextInt(validMeanings.length)];
+        if (!options.contains(randomMeaning)) {
+          options.add(randomMeaning);
+        }
+        // Prevent infinite loop if we run out of unique meanings
+        if (options.length >= validMeanings.length + 1) break;
+      }
+
+      options.shuffle();
+      return options;
+    } catch (e) {
+      debugPrint('Error generating options: $e');
+      // Return at least the correct answer
+      return [correctStr];
+    }
   }
 }

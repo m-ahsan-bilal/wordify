@@ -259,7 +259,16 @@ class NotificationService {
     // Check if notifications are enabled in settings (if checkSettings is true)
     if (checkSettings) {
       try {
-        final settingsBox = await Hive.openBox('settings');
+        // Wait for Hive to be ready
+        Box settingsBox;
+        if (Hive.isBoxOpen('settings')) {
+          settingsBox = Hive.box('settings');
+        } else {
+          settingsBox = await Hive.openBox('settings').timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => Hive.box('settings'),
+          );
+        }
         final notificationsEnabled = settingsBox.get(
           'notificationsEnabled',
           defaultValue: true,

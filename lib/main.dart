@@ -53,39 +53,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ============================================================
-  // CRITICAL INITIALIZATION ONLY (needed before first frame)
+  // MINIMAL INITIALIZATION - Run app immediately for fastest startup
+  // Native splash will disappear almost instantly
   // ============================================================
-
-  // Hive initialization (needed for settings check in splash)
-  try {
-    await Hive.initFlutter().timeout(
-      const Duration(seconds: 2),
-      onTimeout: () {
-        debugPrint('Hive init timeout - continuing anyway');
-      },
-    );
-  } catch (e) {
-    debugPrint('Hive initialization error: $e');
-  }
-
-  // Initialize settings box (needed for splash screen onboarding check)
-  try {
-    await Hive.openBox('settings').timeout(
-      const Duration(milliseconds: 500),
-      onTimeout: () {
-        debugPrint('Settings box open timeout');
-        return Hive.box('settings'); // Return existing box if timeout
-      },
-    );
-  } catch (e) {
-    debugPrint('Settings box open error: $e');
-    // Try to get existing box
-    try {
-      Hive.box('settings');
-    } catch (_) {
-      // Ignore if box doesn't exist yet
-    }
-  }
 
   // ============================================================
   // REPOSITORY INITIALIZATION (Dependency Injection)
@@ -100,8 +70,8 @@ void main() async {
   final router = AppRouter.createRouter();
 
   // ============================================================
-  // RUN APP IMMEDIATELY (don't wait for heavy initialization)
-  // This makes native splash disappear quickly
+  // RUN APP IMMEDIATELY (don't wait for Hive)
+  // Native splash disappears as soon as Flutter draws first frame
   // ============================================================
   runApp(
     MultiProvider(
@@ -142,9 +112,42 @@ void main() async {
   );
 
   // ============================================================
-  // BACKGROUND INITIALIZATION (runs after app starts)
+  // BACKGROUND INITIALIZATION (runs in parallel after app starts)
   // This doesn't block the first frame, so native splash disappears quickly
   // ============================================================
+
+  // Hive initialization in background (runs in parallel with app startup)
+  final hiveInitFuture = Future.microtask(() async {
+    try {
+      await Hive.initFlutter().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          debugPrint('Hive init timeout - continuing anyway');
+        },
+      );
+
+      // Initialize settings box after Hive is ready
+      try {
+        await Hive.openBox('settings').timeout(
+          const Duration(milliseconds: 500),
+          onTimeout: () {
+            debugPrint('Settings box open timeout');
+            return Hive.box('settings');
+          },
+        );
+      } catch (e) {
+        debugPrint('Settings box open error: $e');
+        try {
+          Hive.box('settings');
+        } catch (_) {
+          // Ignore if box doesn't exist yet
+        }
+      }
+      debugPrint('✅ Hive initialized successfully');
+    } catch (e) {
+      debugPrint('Hive initialization error: $e');
+    }
+  });
 
   // Helper function to initialize NotificationService after Firebase is ready
   void _initializeNotificationService() {
@@ -225,22 +228,48 @@ void main() async {
     });
   }
 
-  // Initialize data sources in background
+  // Initialize data sources in background - AFTER Hive is ready
   Future.microtask(() async {
+    // Wait for Hive to be initialized first (runs in parallel with app startup)
+    try {
+      await hiveInitFuture;
+    } catch (e) {
+      debugPrint('Hive not ready for data sources: $e');
+      // Retry after delay if Hive failed
+      await Future.delayed(const Duration(milliseconds: 500));
+      try {
+        await hiveInitFuture;
+      } catch (e2) {
+        debugPrint('Hive retry failed: $e2');
+      }
+    }
+
+    // Now initialize data sources (Hive should be ready)
     try {
       await WordsLocalDatasource().init();
+      debugPrint('✅ WordsLocalDatasource initialized');
     } catch (e) {
       debugPrint('WordsLocalDatasource init error: $e');
+      // Retry after a delay if Hive wasn't ready
+      Future.delayed(const Duration(milliseconds: 500), () async {
+        try {
+          await WordsLocalDatasource().init();
+        } catch (e2) {
+          debugPrint('WordsLocalDatasource retry failed: $e2');
+        }
+      });
     }
 
     try {
       await StreakLocalDatasource().init();
+      debugPrint('✅ StreakLocalDatasource initialized');
     } catch (e) {
       debugPrint('StreakLocalDatasource init error: $e');
     }
 
     try {
       await QuizLocalDatasource().init();
+      debugPrint('✅ QuizLocalDatasource initialized');
     } catch (e) {
       debugPrint('QuizLocalDatasource init error: $e');
     }

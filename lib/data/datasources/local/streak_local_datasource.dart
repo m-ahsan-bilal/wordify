@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../../../core/model/streak_model.dart';
 
@@ -13,7 +14,34 @@ class StreakLocalDatasource {
 
   /// Initialize Hive box for settings/streak
   Future<void> init() async {
-    _settingsBox = await Hive.openBox('settings');
+    try {
+      // Check if box is already open
+      if (Hive.isBoxOpen('settings')) {
+        _settingsBox = Hive.box('settings');
+      } else {
+        _settingsBox = await Hive.openBox('settings').timeout(
+          const Duration(seconds: 2),
+          onTimeout: () {
+            // Try to get existing box if timeout
+            try {
+              return Hive.box('settings');
+            } catch (_) {
+              rethrow;
+            }
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('Error initializing StreakLocalDatasource: $e');
+      // Retry after delay
+      await Future.delayed(const Duration(milliseconds: 500));
+      try {
+        _settingsBox = await Hive.openBox('settings');
+      } catch (e2) {
+        debugPrint('StreakLocalDatasource retry failed: $e2');
+        rethrow;
+      }
+    }
   }
 
   /// Get streak data from local storage

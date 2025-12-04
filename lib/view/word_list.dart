@@ -42,13 +42,8 @@ class _WordsListScreenState extends State<WordsListScreen> {
   }
 
   List<Map<String, dynamic>> _getFilteredWords(WordsListViewModel vm) {
-    // Combine all words into a single list
-    List<Map<String, dynamic>> allWords = [];
-    allWords.addAll(vm.todaysWords);
-    allWords.addAll(vm.yesterdaysWords);
-    for (var words in vm.olderWords.values) {
-      allWords.addAll(words);
-    }
+    // Get all words sorted by time (most recent first) from ViewModel
+    List<Map<String, dynamic>> allWords = vm.getAllWordsSortedByTime();
 
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
@@ -77,20 +72,7 @@ class _WordsListScreenState extends State<WordsListScreen> {
     }
     // else: 'all' - no additional filtering
 
-    // Sort by date (newest first)
-    allWords.sort((a, b) {
-      final dateA = a['dateAdded']?.toString();
-      final dateB = b['dateAdded']?.toString();
-      if (dateA == null && dateB == null) return 0;
-      if (dateA == null) return 1;
-      if (dateB == null) return -1;
-      try {
-        return DateTime.parse(dateB).compareTo(DateTime.parse(dateA));
-      } catch (e) {
-        return 0;
-      }
-    });
-
+    // Words are already sorted by time (most recent first) from getAllWordsSortedByTime()
     return allWords;
   }
 
@@ -230,18 +212,30 @@ class _WordsListScreenState extends State<WordsListScreen> {
   }
 
   Widget _buildModernWordCard(Map<String, dynamic> word) {
-    final vm = context.read<WordsListViewModel>();
     final wordIndex = word['index'] as int? ?? 0;
     final wordText = word['word']?.toString() ?? '';
     final meaning = word['meaning']?.toString() ?? '';
 
     // Use ViewModel methods for business logic
-    final reviewStatus = vm.getWordReviewStatus(word);
+    // final reviewStatus = vm.getWordReviewStatus(word);
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         HapticFeedback.lightImpact();
-        context.push('/word-details', extra: wordIndex);
+        // Navigate to word details and wait for return
+        await context.push('/word-details', extra: wordIndex);
+        // Reload data when returning from word details screen
+        // This ensures data is refreshed after edits or deletions
+        if (mounted) {
+          try {
+            final vm = context.read<WordsListViewModel>();
+            await vm.loadWords();
+          } catch (e) {
+            debugPrint(
+              'Error reloading words after returning from details: $e',
+            );
+          }
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -286,9 +280,8 @@ class _WordsListScreenState extends State<WordsListScreen> {
 
                   // Meaning and Review Status
                   Text(
-                    meaning.isNotEmpty
-                        ? "$meaning • $reviewStatus"
-                        : reviewStatus,
+                    meaning.isNotEmpty ? meaning : 'No meaning provided',
+
                     style: TextStyle(
                       fontSize: 12,
                       color: ThemeColors.getSecondaryTextColor(context),
@@ -296,6 +289,17 @@ class _WordsListScreenState extends State<WordsListScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  // Text(
+                  //   meaning.isNotEmpty
+                  //       ? "$meaning • $reviewStatus"
+                  //       : reviewStatus,
+                  //   style: TextStyle(
+                  //     fontSize: 12,
+                  //     color: ThemeColors.getSecondaryTextColor(context),
+                  //   ),
+                  //   maxLines: 1,
+                  //   overflow: TextOverflow.ellipsis,
+                  // ),
                 ],
               ),
             ),

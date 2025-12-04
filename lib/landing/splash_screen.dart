@@ -97,48 +97,56 @@ class _SplashScreenState extends State<SplashScreen>
     _isNavigating = true;
 
     try {
-      // Check onboarding status with timeout and error handling
+      // Check onboarding status - Hive may still be initializing
       Future<bool> checkOnboarding() async {
-        try {
-          final box = await Hive.openBox('settings').timeout(
-            const Duration(milliseconds: 500),
-            onTimeout: () {
-              debugPrint('Hive box open timeout - using default');
-              try {
-                return Hive.box('settings');
-              } catch (e) {
-                debugPrint('Error accessing Hive box: $e');
-                return Hive.box('settings');
-              }
-            },
-          );
-          final hasSeenOnboarding = box.get('onboarding', defaultValue: false);
-          return hasSeenOnboarding;
-        } catch (e) {
-          debugPrint('Error checking onboarding: $e');
-          // Default to onboarding if check fails
-          return false;
+        // Wait a bit for Hive to initialize (max 500ms)
+        for (int i = 0; i < 5; i++) {
+          try {
+            // Try to access settings box
+            final box = Hive.box('settings');
+            final hasSeenOnboarding = box.get('onboarding', defaultValue: false);
+            return hasSeenOnboarding;
+          } catch (e) {
+            // Box not ready yet, wait a bit
+            if (i < 4) {
+              await Future.delayed(const Duration(milliseconds: 100));
+              continue;
+            }
+            // Last attempt - try opening the box
+            try {
+              final box = await Hive.openBox('settings').timeout(
+                const Duration(milliseconds: 300),
+                onTimeout: () {
+                  try {
+                    return Hive.box('settings');
+                  } catch (_) {
+                    rethrow;
+                  }
+                },
+              );
+              return box.get('onboarding', defaultValue: false);
+            } catch (e2) {
+              debugPrint('Error opening settings box: $e2');
+              return false; // Default to onboarding
+            }
+          }
         }
+        return false; // Default to onboarding
       }
 
-      // Start onboarding check in parallel (non-blocking)
-      final onboardingFuture = checkOnboarding();
-
-      // Show splash screen for 1.5 seconds (minimum display time)
-      await Future.delayed(const Duration(milliseconds: 1500));
-
-      if (!mounted || _isNavigating == false) return;
-
-      // Get onboarding status
+      // Check onboarding status immediately (settings box already opened in main.dart)
       bool hasSeenOnboarding = false;
       try {
-        hasSeenOnboarding = await onboardingFuture;
+        hasSeenOnboarding = await checkOnboarding();
       } catch (e) {
         debugPrint('Error getting onboarding status: $e');
         hasSeenOnboarding = false; // Default to onboarding
       }
 
-      if (!mounted) return;
+      // Show splash screen for minimum 800ms (reduced from 1.5s for faster startup)
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      if (!mounted || _isNavigating == false) return;
 
       // Start preloading data in background (non-blocking, won't crash if fails)
       if (hasSeenOnboarding) {
@@ -148,7 +156,7 @@ class _SplashScreenState extends State<SplashScreen>
         });
       }
 
-      // Navigate after 1.5 seconds with error handling
+      // Navigate immediately after onboarding check (don't wait for preload)
       if (mounted && context.mounted) {
         try {
           final route = hasSeenOnboarding ? '/home' : '/onboarding';

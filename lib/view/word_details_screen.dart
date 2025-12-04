@@ -26,6 +26,9 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
   final flutterTts = FlutterTts();
   bool isLoading = true;
 
+  // Form key for validation
+  final _formKey = GlobalKey<FormState>();
+
   // Controllers for editing
   final _wordController = TextEditingController();
   final _meaningController = TextEditingController();
@@ -48,22 +51,54 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
   }
 
   Future<void> _loadWord() async {
-    final wordRepo = context.read<WordRepository>();
-    final word = await wordRepo.getWord(widget.wordIndex);
+    try {
+      final wordRepo = context.read<WordRepository>();
+      final word = await wordRepo.getWord(widget.wordIndex);
 
-    if (word != null && mounted) {
-      setState(() {
-        wordData = Map<String, dynamic>.from(word);
-        isLoading = false;
+      if (!mounted) return;
 
-        // Initialize controllers with current data
-        _wordController.text = wordData['word'] ?? '';
-        _meaningController.text = wordData['meaning'] ?? '';
-        _synonymsController.text = wordData['synonyms'] ?? '';
-        _antonymsController.text = wordData['antonyms'] ?? '';
-        _sentenceController.text = wordData['sentence'] ?? '';
-        _sourceController.text = wordData['source'] ?? '';
-      });
+      if (word != null) {
+        setState(() {
+          wordData = Map<String, dynamic>.from(word);
+          isLoading = false;
+
+          // Initialize controllers with current data
+          _wordController.text = wordData['word']?.toString() ?? '';
+          _meaningController.text = wordData['meaning']?.toString() ?? '';
+          _synonymsController.text = wordData['synonyms']?.toString() ?? '';
+          _antonymsController.text = wordData['antonyms']?.toString() ?? '';
+          _sentenceController.text = wordData['sentence']?.toString() ?? '';
+          _sourceController.text = wordData['source']?.toString() ?? '';
+        });
+      } else {
+        // Word not found - navigate back with error message
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.failedToLoadData),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading word: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${AppLocalizations.of(context)!.failedToLoadData}: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -98,7 +133,26 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
   }
 
   void _saveChanges() async {
+    // Validate form before saving
+    if (!_formKey.currentState!.validate()) {
+      HapticFeedback.heavyImpact();
+      return;
+    }
+
     HapticFeedback.lightImpact();
+
+    // Safely parse dateAdded with fallback to current date
+    DateTime dateAdded;
+    try {
+      if (wordData['dateAdded'] != null) {
+        dateAdded = DateTime.parse(wordData['dateAdded'].toString());
+      } else {
+        dateAdded = DateTime.now();
+      }
+    } catch (e) {
+      debugPrint('Error parsing dateAdded: $e, using current date');
+      dateAdded = DateTime.now();
+    }
 
     // Create updated word from controllers
     final updatedWord = Word(
@@ -108,7 +162,7 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
       antonyms: _antonymsController.text.trim(),
       sentence: _sentenceController.text.trim(),
       source: _sourceController.text.trim(),
-      dateAdded: DateTime.parse(wordData['dateAdded']), // Keep original date
+      dateAdded: dateAdded, // Keep original date or use current date as fallback
     );
 
     final viewModel = context.read<AddWordViewModel>();
@@ -291,6 +345,8 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
               icon: Icon(Icons.close, color: ThemeColors.getTextColor(context)),
               onPressed: () {
                 setState(() => isEditing = false);
+                // Reset form validation state
+                _formKey.currentState?.reset();
                 // Reset controllers to original values
                 _wordController.text = wordData['word'] ?? '';
                 _meaningController.text = wordData['meaning'] ?? '';
@@ -711,106 +767,113 @@ class _WordDetailsScreenState extends State<WordDetailsScreen> {
 
   // Edit Mode Component
   Widget _buildEditForm() {
-    return Column(
-      children: [
-        // Word Input
-        _buildEditSection(
-          AppLocalizations.of(context)!.word,
-          _wordController,
-          _wordFocus,
-          _meaningFocus,
-          AppLocalizations.of(context)!.enterTheWord,
-          isRequired: true,
-        ),
-        const SizedBox(height: 16),
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          // Word Input
+          _buildEditSection(
+            AppLocalizations.of(context)!.word,
+            _wordController,
+            _wordFocus,
+            _meaningFocus,
+            AppLocalizations.of(context)!.enterTheWord,
+            isRequired: true,
+          ),
+          const SizedBox(height: 16),
 
-        // Meaning Input
-        _buildEditSection(
-          AppLocalizations.of(context)!.meaning,
-          _meaningController,
-          _meaningFocus,
-          _synonymsFocus,
-          AppLocalizations.of(context)!.enterTheMeaning,
-          maxLines: 3,
-          isRequired: true,
-        ),
-        const SizedBox(height: 16),
+          // Meaning Input
+          _buildEditSection(
+            AppLocalizations.of(context)!.meaning,
+            _meaningController,
+            _meaningFocus,
+            _synonymsFocus,
+            AppLocalizations.of(context)!.enterTheMeaning,
+            maxLines: 3,
+            isRequired: true,
+          ),
+          const SizedBox(height: 16),
 
-        // Synonyms Input
-        _buildEditSection(
-          AppLocalizations.of(context)!.synonyms,
-          _synonymsController,
-          _synonymsFocus,
-          _antonymsFocus,
-          AppLocalizations.of(context)!.enterSynonymsComma,
-        ),
-        const SizedBox(height: 16),
+          // Synonyms Input
+          _buildEditSection(
+            AppLocalizations.of(context)!.synonyms,
+            _synonymsController,
+            _synonymsFocus,
+            _antonymsFocus,
+            AppLocalizations.of(context)!.enterSynonymsComma,
+            isRequired: true,
+          ),
+          const SizedBox(height: 16),
 
-        // Antonyms Input
-        _buildEditSection(
-          AppLocalizations.of(context)!.antonyms,
-          _antonymsController,
-          _antonymsFocus,
-          _sentenceFocus,
-          AppLocalizations.of(context)!.enterAntonymsComma,
-        ),
-        const SizedBox(height: 16),
+          // Antonyms Input
+          _buildEditSection(
+            AppLocalizations.of(context)!.antonyms,
+            _antonymsController,
+            _antonymsFocus,
+            _sentenceFocus,
+            AppLocalizations.of(context)!.enterAntonymsComma,
+            isRequired: true,
+          ),
+          const SizedBox(height: 16),
 
-        // Sentence Input
-        _buildEditSection(
-          AppLocalizations.of(context)!.exampleSentence,
-          _sentenceController,
-          _sentenceFocus,
-          null,
-          AppLocalizations.of(context)!.sentenceHint,
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
+          // Sentence Input
+          _buildEditSection(
+            AppLocalizations.of(context)!.exampleSentence,
+            _sentenceController,
+            _sentenceFocus,
+            null,
+            AppLocalizations.of(context)!.sentenceHint,
+            maxLines: 3,
+          ),
+          const SizedBox(height: 16),
 
-        // Save and Cancel Buttons
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () {
-                  setState(() => isEditing = false);
-                  // Reset controllers
-                  _wordController.text = wordData['word'] ?? '';
-                  _meaningController.text = wordData['meaning'] ?? '';
-                  _synonymsController.text = wordData['synonyms'] ?? '';
-                  _antonymsController.text = wordData['antonyms'] ?? '';
-                  _sentenceController.text = wordData['sentence'] ?? '';
-                  _sourceController.text = wordData['source'] ?? '';
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: ThemeColors.getSecondaryTextColor(context),
-                  side: BorderSide(color: ThemeColors.getBorderColor(context)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          // Save and Cancel Buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    setState(() => isEditing = false);
+                    // Reset form validation state
+                    _formKey.currentState?.reset();
+                    // Reset controllers
+                    _wordController.text = wordData['word'] ?? '';
+                    _meaningController.text = wordData['meaning'] ?? '';
+                    _synonymsController.text = wordData['synonyms'] ?? '';
+                    _antonymsController.text = wordData['antonyms'] ?? '';
+                    _sentenceController.text = wordData['sentence'] ?? '';
+                    _sourceController.text = wordData['source'] ?? '';
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ThemeColors.getSecondaryTextColor(context),
+                    side: BorderSide(color: ThemeColors.getBorderColor(context)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  child: Text(AppLocalizations.of(context)!.cancel),
                 ),
-                child: Text(AppLocalizations.of(context)!.cancel),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _saveChanges,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
-                  foregroundColor: AppColors.darkGray,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _saveChanges,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF),
+                    foregroundColor: AppColors.darkGray,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  child: Text(AppLocalizations.of(context)!.saveChanges),
                 ),
-                child: Text(AppLocalizations.of(context)!.saveChanges),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 

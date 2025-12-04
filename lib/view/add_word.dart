@@ -24,6 +24,7 @@ class AddWordScreen extends StatefulWidget {
 
 class _AddWordScreenState extends State<AddWordScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final _wordController = TextEditingController();
   final _meaningController = TextEditingController();
   final _synonymsController = TextEditingController();
@@ -71,6 +72,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _wordController.dispose();
     _meaningController.dispose();
     _synonymsController.dispose();
@@ -85,17 +87,106 @@ class _AddWordScreenState extends State<AddWordScreen> {
     super.dispose();
   }
 
+  /// Scroll to first field with validation error
+  void _scrollToFirstError() {
+    // Check which fields have errors and scroll to the first one
+    if (_wordController.text.trim().isEmpty) {
+      _wordFocus.requestFocus();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    } else if (_meaningController.text.trim().isEmpty) {
+      _meaningFocus.requestFocus();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _scrollController.animateTo(
+          100,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    } else if (_synonymsController.text.trim().isEmpty) {
+      _synonymsFocus.requestFocus();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _scrollController.animateTo(
+          200,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    } else if (_antonymsController.text.trim().isEmpty) {
+      _antonymsFocus.requestFocus();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _scrollController.animateTo(
+          300,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    }
+  }
+
   void _saveWord() async {
-    if (!_formKey.currentState!.validate()) return;
+    // First, manually check all required fields before form validation
+    final wordText = _wordController.text.trim();
+    final meaningText = _meaningController.text.trim();
+    final synonymsText = _synonymsController.text.trim();
+    final antonymsText = _antonymsController.text.trim();
+
+    // Check if any required field is empty
+    bool hasEmptyField =
+        wordText.isEmpty ||
+        meaningText.isEmpty ||
+        synonymsText.isEmpty ||
+        antonymsText.isEmpty;
+
+    // Validate form - this will show field-level errors
+    final isFormValid = _formKey.currentState!.validate();
+
+    // If form validation failed OR we detected empty fields, show error
+    if (!isFormValid || hasEmptyField) {
+      // Provide haptic feedback for validation failure
+      HapticFeedback.heavyImpact();
+
+      // Show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: ThemeColors.getTextColor(context),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Please fill all required fields')),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Scroll to first error field
+      _scrollToFirstError();
+      return;
+    }
 
     // Provide haptic feedback
     HapticFeedback.lightImpact();
 
+    // Create Word object (we've already validated all fields are filled)
     final word = Word(
-      word: _wordController.text.trim(),
-      meaning: _meaningController.text.trim(),
-      synonyms: _synonymsController.text.trim(),
-      antonyms: _antonymsController.text.trim(),
+      word: wordText,
+      meaning: meaningText,
+      synonyms: synonymsText,
+      antonyms: antonymsText,
       sentence: _sentenceController.text.trim(),
       source: _selectedSource,
     );
@@ -210,6 +301,7 @@ class _AddWordScreenState extends State<AddWordScreen> {
               children: [
                 Expanded(
                   child: ListView(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(16),
                     children: [
                       // Word Input Section
@@ -260,16 +352,23 @@ class _AddWordScreenState extends State<AddWordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ReusableSectionHeader(title: AppLocalizations.of(context)!.word),
+          ReusableSectionHeader(
+            title: AppLocalizations.of(context)!.word,
+            isRequired: true,
+          ),
           const SizedBox(height: 12),
           ReusableTextField(
             controller: _wordController,
             focusNode: _wordFocus,
             nextFocusNode: _meaningFocus,
             hintText: AppLocalizations.of(context)!.enterTheNewWord,
-            validator: (v) => v == null || v.trim().isEmpty
-                ? AppLocalizations.of(context)!.pleaseEnterAWord
-                : null,
+            isRequired: true,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) {
+                return AppLocalizations.of(context)!.pleaseEnterAWord;
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 8),
           Text(
@@ -324,7 +423,6 @@ class _AddWordScreenState extends State<AddWordScreen> {
             focusNode: _synonymsFocus,
             nextFocusNode: _antonymsFocus,
             hintText: AppLocalizations.of(context)!.synonymsHint,
-            isRequired: true,
             validator: (v) => v == null || v.trim().isEmpty
                 ? AppLocalizations.of(context)!.thisFieldIsRequired
                 : null,
@@ -349,7 +447,6 @@ class _AddWordScreenState extends State<AddWordScreen> {
             focusNode: _antonymsFocus,
             nextFocusNode: _sentenceFocus,
             hintText: AppLocalizations.of(context)!.antonymsHint,
-            isRequired: true,
             validator: (v) => v == null || v.trim().isEmpty
                 ? AppLocalizations.of(context)!.thisFieldIsRequired
                 : null,

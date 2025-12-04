@@ -16,15 +16,60 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   Future<void> _loadTheme() async {
-    _settingsBox = await Hive.openBox('settings');
-    _isDarkMode = _settingsBox.get(_themeKey, defaultValue: false);
-    notifyListeners();
+    // Wait for Hive to be initialized (with retries)
+    for (int i = 0; i < 10; i++) {
+      try {
+        // Check if Hive is initialized
+        if (!Hive.isBoxOpen('settings')) {
+          _settingsBox = await Hive.openBox('settings').timeout(
+            const Duration(milliseconds: 500),
+            onTimeout: () {
+              // Try to get existing box if timeout
+              try {
+                return Hive.box('settings');
+              } catch (_) {
+                rethrow;
+              }
+            },
+          );
+        } else {
+          _settingsBox = Hive.box('settings');
+        }
+
+        _isDarkMode = _settingsBox.get(_themeKey, defaultValue: false);
+        notifyListeners();
+        return; // Success, exit
+      } catch (e) {
+        // Hive not ready yet, wait and retry
+        if (i < 9) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          continue;
+        }
+        // Last attempt failed, use default
+        debugPrint('Error loading theme (Hive not ready): $e');
+        _isDarkMode = false; // Default to light theme
+        notifyListeners();
+        return;
+      }
+    }
   }
 
   Future<void> toggleTheme() async {
     _isDarkMode = !_isDarkMode;
-    await _settingsBox.put(_themeKey, _isDarkMode);
-    notifyListeners();
+    try {
+      // Ensure box is available
+      if (!Hive.isBoxOpen('settings')) {
+        _settingsBox = await Hive.openBox('settings');
+      } else {
+        _settingsBox = Hive.box('settings');
+      }
+      await _settingsBox.put(_themeKey, _isDarkMode);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving theme: $e');
+      // Still update UI even if save fails
+      notifyListeners();
+    }
   }
 
   /// Light theme - uses colors from splash/onboarding
